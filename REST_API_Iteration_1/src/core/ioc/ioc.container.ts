@@ -7,6 +7,7 @@ import { CustomersService } from '../services/customers.service';
 import { CustomersSessionService } from '../services/customers.sessions.service';
 import { HashingService } from '../services/hashing.service';
 import { RequestBodyValidationService } from '../services/request.body.validation.service';
+import { RedisDatabaseService } from '../services/redis.database.service';
 
 /**
  * The IoC container.
@@ -49,5 +50,6 @@ export class IoContainer{
         this.container.bind<CustomersSessionService>(CustomersSessionService.name).to(CustomersSessionService).inSingletonScope();
         this.container.bind<HashingService>(HashingService.name).to(HashingService).inSingletonScope();
         this.container.bind<RequestBodyValidationService>(RequestBodyValidationService.name).to(RequestBodyValidationService).inSingletonScope();
+        this.container.bind<RedisDatabaseService>(RedisDatabaseService.name).to(RedisDatabaseService).inSingletonScope();
     }
 }
