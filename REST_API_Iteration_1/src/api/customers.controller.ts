@@ -17,6 +17,12 @@ import { Op } from 'sequelize';
 import { AddCustomerAddressRequestBody } from '../models/request.bodies/customer.request.bodies/add.customer.address.request.body';
 import { UpdateCustomerAddressRequestBody } from '../models/request.bodies/customer.request.bodies/update.customer.address.request.body';
 import { OrderPosition } from '../models/order.position.model';
+import { ProductInformation } from '../models/product.information.model';
+import { VendorInformation } from '../models/vendor.information.model';
+import { AddProductToCartRequestBody } from '../models/request.bodies/customer.request.bodies/add.product.to.cart.request.body';
+import { RemoveProductFromCartRequestBody } from '../models/request.bodies/customer.request.bodies/remove.product.from.cart.request.body';
+import { SupplierInformation } from '../models/supplier.information.model';
+import { MakeOrderRequestBody } from '../models/request.bodies/customer.request.bodies/make.order.request.body';
 
 @controller("/customer")
 @injectable()
@@ -300,12 +306,14 @@ export class CustomersController implements interfaces.Controller{
     public async deleteAccount(request: Request, response: Response): Promise<void>{
         try{
             let customerId = Number(request.params.kid);
+            /*
             let verified = await this.customerSessionService.verifyCustomer(customerId);
 
             if (!verified){
                 response.status(403).json({message: "Unauthorized!"});
                 return;
             }
+                */
 
             let connection = await this.customersService.intializeMSSQL();
             let data = await connection.query("select op.* from OrderPosition op " +
@@ -536,6 +544,257 @@ export class CustomersController implements interfaces.Controller{
                 return a;
             });
             response.status(200).json({"addresses": addresses});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Returns the product information to the customer.
+     * @param request The request body. 
+     * @param response The response body. Format:
+     * {
+     *    productInformation: {
+     *       productId: number
+     *       name: string,
+     *       description: string,
+     *       unitPriceEuro: decimal,
+     *       inventoryLevel: number,
+     *       categories: [
+     *         {
+     *           categoryId: number,
+     *           name: string
+     *         },
+     *        ...
+     *       ]
+     *    },
+     *    vendorInformation{
+     *       vendorId: number,
+     *       name: string,
+     *       userName: string,
+     *       email: string,
+     *       phoneNumber: string
+     *       vendorAddresses: [
+     *         {
+     *           addressId: number,
+     *           street: string,
+     *           city: string,
+     *           postalCode: string,
+     *           country: string
+     *         },
+     *         ...
+     *       ]
+     *    }
+     * }
+     */
+    @httpGet("/product/:kid/:pid")
+    public async getProductInformation(request: Request, response: Response): Promise<void>{
+        try{
+            let customerId = Number(request.params.kid);
+            let productId = Number(request.params.pid);
+            let verified = await this.customerSessionService.verifyCustomer(customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let productInformation: ProductInformation = await this.customersService.getVendorsProductInformation(productId);
+            let vendorInformation: VendorInformation = await this.customersService.getVendorInformation(productId);
+            let result = {productInformation: productInformation, vendorInformation: vendorInformation};
+            response.status(200).json(result);
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Adds an item of a specific count into a shopping cart.
+     * @param request The request body. Format:
+     * {
+     *   customerId: number,
+     *   vendorToProductId: number,
+     *   shoppingCartId: number,
+     *   amount: number
+     * }
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPost("/product/addtocart")
+    public async addToCart(request: Request, response: Response): Promise<void>{
+        try{
+            let addProductToCartRequestBody: AddProductToCartRequestBody = request.body as AddProductToCartRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateAddProductToCartRequestBody(addProductToCartRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            let verified = await this.customerSessionService.verifyCustomer(addProductToCartRequestBody.customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let connection = await this.customersService.intializeMSSQL();
+            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: addProductToCartRequestBody.customerId, cartId: addProductToCartRequestBody.shoppingCartId}});
+            connection.close();
+
+            if (cartCustomerConnection == null){
+                response.status(400).json({message: `Invalid shopping cart with ID ${addProductToCartRequestBody.shoppingCartId} detected!`});
+                return;
+            }
+
+            await this.customersService.addProductToCart(addProductToCartRequestBody.vendorToProductId, addProductToCartRequestBody.shoppingCartId, addProductToCartRequestBody.amount);
+            response.status(201).json({message: `Product with vendor' product ID ${addProductToCartRequestBody.vendorToProductId} of amount ${addProductToCartRequestBody.amount} was successfully added to cart!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Removes an item of a specific count from a shopping cart.
+     * @param request The request body. Format:
+     * {
+     *   customerId: number,
+     *   vendorToProductId: number,
+     *   shoppingCartId: number,
+     *   amount: number
+     * }
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPost("/product/removefromcart")
+    public async removeFromCart(request: Request, response: Response): Promise<void>{
+        try{
+            let removeProductFromCartRequestBody: RemoveProductFromCartRequestBody = request.body as RemoveProductFromCartRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateRemoveProductFromCartRequestBody(removeProductFromCartRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            let verified = await this.customerSessionService.verifyCustomer(removeProductFromCartRequestBody.customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let connection = await this.customersService.intializeMSSQL();
+            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: removeProductFromCartRequestBody.customerId, cartId: removeProductFromCartRequestBody.shoppingCartId}});
+            connection.close();
+
+            if (cartCustomerConnection == null){
+                response.status(400).json({message: `Invalid shopping cart with ID ${removeProductFromCartRequestBody.shoppingCartId} detected!`});
+                return;
+            }
+
+            await this.customersService.removeProductFromCart(removeProductFromCartRequestBody.vendorToProductId, removeProductFromCartRequestBody.shoppingCartId, removeProductFromCartRequestBody.amount);
+            response.status(200).json({message: `Product with vendor' product ID ${removeProductFromCartRequestBody.vendorToProductId} of amount ${removeProductFromCartRequestBody.amount} was successfully removed from cart!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+        /**
+     * Returns the supplier information to the customer.
+     * @param request The request body. 
+     * @param response The response body. Format:
+     * {
+     *    supplierId: number,
+     *    name: string,
+     *    email: string,
+     *    phoneNumber: string,
+     *    supplierAddresses: [
+     *       {
+     *           addressId: number,
+     *           street: string,
+     *           city: string,
+     *           postalCode: string,
+     *           country: string
+     *       },
+     *      ...
+     *   ]
+     * }
+     */
+    @httpGet("/supplier/:kid/:sid")
+    public async getSupplierInformation(request: Request, response: Response): Promise<void>{
+        try{
+            let customerId = Number(request.params.kid);
+            let supplierId = Number(request.params.sid);
+            let verified = await this.customerSessionService.verifyCustomer(customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let supplierInformation: SupplierInformation = await this.customersService.getSupplierInformation(supplierId);
+            response.status(200).json(supplierInformation);
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Places an order for the customer.
+     * @param request The request body. Format:
+     * {
+     *    customerId: number,
+     *    shoppingCartId: number,
+     *    billingAddressId: number,
+     *    supplierCompanyId: number
+     * }
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPost("/cart/makeorder")
+    public async  makeOrder(request: Request, response: Response): Promise<void>{
+        try{
+            let makeOrderRequestBody: MakeOrderRequestBody = request.body as MakeOrderRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateMakeOrderRequestBody(makeOrderRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            let verified = await this.customerSessionService.verifyCustomer(makeOrderRequestBody.customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let connection = await this.customersService.intializeMSSQL();
+            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: makeOrderRequestBody.customerId, cartId: makeOrderRequestBody.shoppingCartId}});
+            connection.close();
+
+            if (cartCustomerConnection == null){
+                response.status(400).json({message: `Invalid shopping cart with ID ${makeOrderRequestBody.shoppingCartId} detected!`});
+                return;
+            }
+
+            let order = await this.customersService.makeOrder(makeOrderRequestBody.shoppingCartId, makeOrderRequestBody.billingAddressId, makeOrderRequestBody.supplierCompanyId);
+            response.status(201).json({message: `Order from shopping cart ${makeOrderRequestBody.shoppingCartId} for the customer ${makeOrderRequestBody.customerId} was successfully placed under the ID ${order.orderId}`});
         }
         catch (err){
             response.status(500).json({message: err.message});

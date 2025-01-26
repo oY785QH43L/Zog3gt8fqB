@@ -8,6 +8,9 @@ import { LoginCustomerRequestBody } from '../../models/request.bodies/customer.r
 import { UpdateCustomerRequestBody } from '../../models/request.bodies/customer.request.bodies/update.customer.request.body';
 import { AddCustomerAddressRequestBody } from '../../models/request.bodies/customer.request.bodies/add.customer.address.request.body';
 import { UpdateCustomerAddressRequestBody } from '../../models/request.bodies/customer.request.bodies/update.customer.address.request.body';
+import { AddProductToCartRequestBody } from '../../models/request.bodies/customer.request.bodies/add.product.to.cart.request.body';
+import { RemoveProductFromCartRequestBody } from '../../models/request.bodies/customer.request.bodies/remove.product.from.cart.request.body';
+import { MakeOrderRequestBody } from '../../models/request.bodies/customer.request.bodies/make.order.request.body';
 
 /**
  * The customers service.
@@ -151,6 +154,68 @@ export class RequestBodyValidationService {
 
         if (body.street === undefined || body.street === null || body.street.length == 0){
             throw new Error("Property street cannot be empty!");
+        }
+    }
+
+    public validateAddProductToCartRequestBody(body: AddProductToCartRequestBody){
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+            throw new Error("Property shoppingCartId cannot be empty!");
+        }
+
+        if (body.amount === undefined || body.amount === null){
+            throw new Error("Property shoppingCartId cannot be empty!");
+        }
+
+        if (Number(body.amount) <= 0){
+            throw new Error("Property amount cannot be 0 or negative!");
+        }
+    }
+
+    public validateRemoveProductFromCartRequestBody(body: RemoveProductFromCartRequestBody){
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+            throw new Error("Property shoppingCartId cannot be empty!");
+        }
+
+        if (body.amount === undefined || body.amount === null){
+            throw new Error("Property shoppingCartId cannot be empty!");
+        }
+
+        if (Number(body.amount) <= 0){
+            throw new Error("Property amount cannot be 0 or negative!");
+        }
+    }
+
+    public validateMakeOrderRequestBody(body: MakeOrderRequestBody){
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+            throw new Error("Property shoppingCartId cannot be empty!");
+        }
+
+        if (body.billingAddressId === undefined || body.billingAddressId === null){
+            throw new Error("Property billingAddressId cannot be empty!");
+        }
+
+        if (body.supplierCompanyId === undefined || body.supplierCompanyId === null){
+            throw new Error("Property supplierCompanyId cannot be empty!");
         }
     }
 }

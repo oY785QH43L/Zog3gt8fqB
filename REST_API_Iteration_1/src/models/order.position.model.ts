@@ -4,6 +4,6 @@ export interface OrderPosition{
     amount: number;
     vendorToProductId: number;
     supplierCompanyId: number;
-    deliveryDate: number;
+    deliveryDate: Date;
     deliveryAddressId: number;
 }
