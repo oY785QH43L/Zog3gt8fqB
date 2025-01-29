@@ -79,7 +79,7 @@ export class CustomersController implements interfaces.Controller{
             }
 
             let passwordHashed = await this.hashingService.hash(createCustomerRequestBody.password);
-            let id = await this.customersService.getNewCustomerId();
+            let id = await this.customersService.getNewId("Customer", "CustomerId");
             let customer = {customerId: id, 
                 firstName: createCustomerRequestBody.firstName, 
                 lastName: createCustomerRequestBody.lastName,
@@ -87,7 +87,7 @@ export class CustomersController implements interfaces.Controller{
                 userName: createCustomerRequestBody.userName,
                 password: passwordHashed,
                 phoneNumber: createCustomerRequestBody.phoneNumber} as Customer;
-            let cartId = await this.customersService.getNewShoppingCartId();
+            let cartId = await this.customersService.getNewId("ShoppingCart", "CartId");
             sequelize.DATE.prototype._stringify = function _stringify(date, options) {
                 return this._applyTimezone(date, options).format('YYYY-MM-DD HH:mm:ss.SSS');
               };
@@ -101,7 +101,7 @@ export class CustomersController implements interfaces.Controller{
             }
 
             for (let addressReq of createCustomerRequestBody.addresses){
-                let newId = await this.customersService.getNewAddressId();
+                let newId = await this.customersService.getNewId("Address", "AddressId");
                 let address = {addressId: newId, street: addressReq.street, city: addressReq.city, postalCode: addressReq.postalCode, country: addressReq.country} as Address;
                 await this.customersService.createNewCustomerAddress(address, customerCreated);
             }
@@ -396,7 +396,7 @@ export class CustomersController implements interfaces.Controller{
             connection.close();
 
             // Save address data
-            let addressId = await this.customersService.getNewAddressId();
+            let addressId = await this.customersService.getNewId("Address", "AddressId");
             let address = {addressId: addressId, street: addAddressRequestBody.street,
                 city: addAddressRequestBody.city, postalCode: addAddressRequestBody.postalCode,
                 country: addAddressRequestBody.country

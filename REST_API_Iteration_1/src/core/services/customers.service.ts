@@ -46,11 +46,11 @@ export class CustomersService {
         });
     }
 
-    public async getNewCustomerId(): Promise<number>{
+    public async getNewId(entityName: string, attributeName: string): Promise<Number>{
         let connection: Sequelize = await this.intializeMSSQL();
 
         try{
-            let id = await connection.models.Customer.max("CustomerId");
+            let id = await connection.models[entityName].max(attributeName);
             connection.close();
 
             if (id == null){
@@ -58,124 +58,6 @@ export class CustomersService {
             }
 
             connection.close();
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewCustomerOrderId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.CustomerOrder.max("OrderId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
-            connection.close();
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewOrderPositionId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.OrderPosition.max("OrderPositionId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
-            connection.close();
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewCustomerToAddressId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.CustomerToAddress.max("CustomerToAddressId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
-            connection.close();
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewAddressId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.Address.max("AddressId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
-            connection.close();
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewShoppingCartId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.ShoppingCart.max("CartId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
-            return Number(id) + 1;
-        }
-        catch (err){
-            connection.close();
-            throw err;
-        }
-    }
-
-    public async getNewProductToCartId(): Promise<number>{
-        let connection: Sequelize = await this.intializeMSSQL();
-
-        try{
-            let id = await connection.models.ProductToCart.max("ProductToCartId");
-            connection.close();
-
-            if (id == null){
-                return 0;
-            }
-
             return Number(id) + 1;
         }
         catch (err){
@@ -348,7 +230,7 @@ export class CustomersService {
             }
 
 
-            let newId = await this.getNewCustomerToAddressId();
+            let newId = await this.getNewId("CustomerToAddress", "CustomerToAddressId");
             let customerToAddress = {customerToAddressId: newId, addressId: address.addressId, customerId: customer.customerId} as CustomerToAddress;
             let created = await connection.models.CustomerToAddress.create(customerToAddress as any);
             let createdConverted = created.dataValues as CustomerToAddress;
@@ -374,7 +256,7 @@ export class CustomersService {
                 let createdReference = await this.createNewCustomerAddressReference(existingAddress.dataValues as Address, customer);
                 addressToReturn = existingAddress.dataValues as Address;
             } else{
-                let newId = await this.getNewAddressId();
+                let newId = await this.getNewId("Address", "AddressId");
                 let addressTocreate = {addressId: newId, street: address.street, city: address.city, postalCode: address.postalCode, country: address.country} as Address;
                 let newAddress = await this.createNewAddress(addressTocreate);
                 let createdReference = await this.createNewCustomerAddressReference(newAddress, customer);
@@ -597,7 +479,7 @@ export class CustomersService {
                     throw new Error(`Invalid amount ${amount} selected (surpasses inventory level of vendor's product with ID ${vendorToProductId}!`);
                 }
 
-                let productToCartId = await this.getNewProductToCartId();
+                let productToCartId = await this.getNewId("ProductToCart", "ProductToCartId");
                 let productToCart = {productToCartId: productToCartId, vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amount} as ProductToCart;
                 await connection.models.ProductToCart.create(productToCart as any);
             } else{
@@ -771,7 +653,7 @@ export class CustomersService {
             }
 
             // Create new order
-            let orderId = await this.getNewCustomerOrderId();
+            let orderId = await this.getNewId("CustomerOrder", "OrderId");
             sequelize.DATE.prototype._stringify = function _stringify(date, options) {
                 return this._applyTimezone(date, options).format('YYYY-MM-DD HH:mm:ss.SSS');
                 };
@@ -822,7 +704,7 @@ export class CustomersService {
                 };
             let date = new Date();
             date.setDate(date.getDate() + 14);
-            let newId = await this.getNewOrderPositionId();
+            let newId = await this.getNewId("OrderPosition", "OrderPositionId");
             let orderPosition = {orderPositionId: newId, orderId: order.orderId, amount: orderItem.amount, 
                 vendorToProductId: orderItem.vendorToProductId, supplierCompanyId: supplierCompanyId, 
                 deliveryDate: date, deliveryAddressId: order.billingAddressId

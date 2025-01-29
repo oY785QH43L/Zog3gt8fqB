@@ -4,27 +4,27 @@ import { RedisDatabaseService } from './redis.database.service';
 
 
 /**
- * The customers session service.
+ * The vendors session service.
  */
 @injectable()
-export class CustomersSessionService {
+export class VendorsSessionService {
     constructor(@inject(RedisDatabaseService.name) private redisDatabaseService: RedisDatabaseService){}
 
-    public async verifyCustomer(customerId: number): Promise<boolean>{
+    public async verifyVendor(vendorId: number): Promise<boolean>{
         return new Promise<boolean>((resolve, reject) => {
-            this.redisDatabaseService.doesKeyExist(process.env.SESSIONS_HASH, "customer:" + String(customerId)).then((response) => {
+            this.redisDatabaseService.doesKeyExist(process.env.SESSIONS_HASH, "vendor:" + String(vendorId)).then((response) => {
                 if (!response){
                     resolve(false);
                     return;
                 }
 
-                this.redisDatabaseService.getValue(process.env.SESSIONS_HASH, "customer:" + String(customerId)).then((response) => {
+                this.redisDatabaseService.getValue(process.env.SESSIONS_HASH, "vendor:" + String(vendorId)).then((response) => {
                     let jwt = require("jsonwebtoken");
                     let decodedToken;
                     let selfReference = this;
                     jwt.verify(response, 'secret', function(err, tokenData){
                         if (err){
-                            selfReference.redisDatabaseService.removeValue(process.env.SESSIONS_HASH, "customer:" + String(customerId)).then((response) => {
+                            selfReference.redisDatabaseService.removeValue(process.env.SESSIONS_HASH, "vendor:" + String(vendorId)).then((response) => {
                                 resolve(false);
                                 return;
                               }).catch((err) => {
@@ -35,8 +35,8 @@ export class CustomersSessionService {
 
                         decodedToken = tokenData;
 
-                        if (decodedToken.role !== "customer"){
-                          selfReference.redisDatabaseService.removeValue(process.env.SESSIONS_HASH, "customer:" + String(customerId)).then((response) => {
+                        if (decodedToken.role !== "vendor"){
+                          selfReference.redisDatabaseService.removeValue(process.env.SESSIONS_HASH, "vendor:" + String(vendorId)).then((response) => {
                             resolve(false);
                             return;
                           }).catch((err) => {
@@ -55,18 +55,18 @@ export class CustomersSessionService {
         })
     }
 
-    public async registerCustomerSession(customerId: number): Promise<number>{
+    public async registerVendorSession(vendorId: number): Promise<number>{
         try{
-            let exists = await this.redisDatabaseService.doesKeyExist(process.env.SESSIONS_HASH,  "customer:" + String(customerId));
+            let exists = await this.redisDatabaseService.doesKeyExist(process.env.SESSIONS_HASH, "vendor:" + String(vendorId));
 
             if (exists){
-                let removed = await this.redisDatabaseService.removeValue(process.env.SESSIONS_HASH,  "customer:" + String(customerId));
+                let removed = await this.redisDatabaseService.removeValue(process.env.SESSIONS_HASH, "vendor:" + String(vendorId));
             }
 
             var jwt = require('jsonwebtoken');
-            let token = jwt.sign({id: customerId, role: "customer"}, "secret", {expiresIn: "3h"});
-            await this.redisDatabaseService.storeNewValue(process.env.SESSIONS_HASH, "customer:" + String(customerId), token);
-            return customerId;
+            let token = jwt.sign({id: vendorId, role: "vendor"}, "secret", {expiresIn: "3h"});
+            await this.redisDatabaseService.storeNewValue(process.env.SESSIONS_HASH, "vendor:" + String(vendorId), token);
+            return vendorId;
         }
         catch (err){
             throw err;
