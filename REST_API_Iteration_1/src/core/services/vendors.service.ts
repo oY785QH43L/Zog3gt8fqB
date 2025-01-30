@@ -1,9 +1,14 @@
 import { injectable } from 'inversify';
 import 'reflect-metadata';
-import { DataTypes, Sequelize } from 'sequelize';
+import { DataTypes, literal, Op, Sequelize } from 'sequelize';
 import { Vendor } from '../../models/vendor.model';
 import { Address } from '../../models/address.model';
 import { VendorToAddress } from '../../models/vendor.to.address.model';
+import { ProductInformation } from '../../models/product.information.model';
+import { Product } from '../../models/product.model';
+import { Category } from '../../models/category.model';
+import { VendorToProduct } from '../../models/vendor.to.product.model';
+import { ProductToCategory } from '../../models/product.to.category.model';
 
 
 /**
@@ -213,6 +218,23 @@ export class VendorsService {
         }  
     }
 
+    public async getVendorAddresses(vendorId: number): Promise<Address[]>{
+        let connection = await this.intializeMSSQL();
+        let data = await connection.query("select a.* from Vendor v left outer join VendorToAddress va " +
+                                          "on v.VendorId = va.VendorId " +
+                                            "left outer join Address a " +
+                                            "on va.AddressId = a.AddressId " +
+                                            `where v.VendorId = ${vendorId}`);
+        connection.close();
+        let addresses: Address[] = data[0].map(function(information){
+            let a = {addressId: information["AddressId"], street: information["Street"], 
+                city: information["City"], postalCode: information["PostalCode"], 
+                country: information["Country"]} as Address;
+            return a;
+        });
+        return addresses;
+    }
+
     public async deleteVendorAddress(addressId: number, vendorId: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
 
@@ -343,6 +365,280 @@ export class VendorsService {
         }  
     }
 
+    public async getVendorsProductInformation(vendorToProductId: number): Promise<ProductInformation>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            let vendorToProductData = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
+
+            if (vendorToProductData == null){
+                throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
+            }
+
+            let vendorToProductDataConverted = vendorToProductData.dataValues as VendorToProduct;
+            let productData = await connection.models.Product.findOne({where: {productId: vendorToProductDataConverted.productId}});
+            let productDataConverted = productData.dataValues as Product;
+            let categories = await connection.query("select c.* from ProductToCategory pc " +
+                "left outer join Category c " +
+                    "on pc.CategoryId = c.CategoryId " +
+                    `where pc.ProductId = ${productDataConverted.productId}`);
+            let categoriesConverted: Category[] = categories[0].map(function(v){
+                return {categoryId: v["CategoryId"], name: v["Name"]} as Category;
+            });
+            let result = {productId: productDataConverted.productId, name: productDataConverted.name,
+                description: productDataConverted.description, unitPriceEuro: vendorToProductDataConverted.unitPriceEuro,
+                inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted
+            } as ProductInformation;
+            return result;
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        }  
+    }
+
+    public async getVendorProducts(vendorId: number): Promise<Array<ProductInformation>>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            // Check if vendor references exists
+            let foundVendorReference = await connection.models.VendorToProduct.findOne({where: {vendorId: vendorId}});
+
+            if (foundVendorReference == null){
+                return [];
+            }
+
+            let ids = await connection.models.VendorToProduct.findAll({attributes: ["vendorToProductId"],where: {vendorId: vendorId}});
+            let idValues = ids.map(function(v){
+                return Number(v.dataValues["vendorToProductId"]);
+            });
+
+            let result: ProductInformation[] = [];
+
+            for (let vpId of idValues){
+                let r = await this.getVendorsProductInformation(vpId);
+                result.push(r);
+            }
+
+            connection.close();
+            return result;
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        }  
+    }
+
+    public async createProductCategoryReferencesIfNotExist(productId: number, categoryIds: number[]): Promise<void>{
+        for (let id of categoryIds){
+            await this.createProductCategoryReferenceIfNotExist(productId, id);
+        }
+    }
+
+    public async createProductCategoryReferenceIfNotExist(productId: number, categoryId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            // Check if the category exists
+            let category = await connection.models.Category.findByPk(categoryId);
+
+            if (category == null){
+                throw new Error(`Category under ID ${categoryId} does not exist!`);
+            }
+
+            // Check if the product exists
+            let product = await connection.models.Product.findByPk(productId);
+
+            if (product == null){
+                throw new Error(`product under ID ${productId} does not exist!`);
+            }      
+            
+            // Check if reference exists
+            let productToCategory = await connection.models.ProductToCategory.findOne({where: {productId: productId, categoryId: categoryId}});
+
+            if (productToCategory == null){
+                let newId = await this.getNewId("ProductToCategory", "ProductToCategoryId");
+                let pcRef = {productToCategoryId: newId, productId: productId, categoryId: categoryId} as ProductToCategory;
+                await connection.models.ProductToCategory.create(pcRef as any);
+            }   
+
+            connection.close();
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        } 
+    }
+
+    public async createNewVendorProduct(vendorId: number, productInformation: ProductInformation): Promise<ProductInformation>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            // Check if vendor exists
+            let foundVendor = await connection.models.Vendor.findByPk(vendorId);
+
+            if (foundVendor == null){
+                throw new Error(`Vendor with ID ${vendorId} does not exist!`);
+            }
+
+            // Check for already own existing product
+            let vendorProducts = await this.getVendorProducts(vendorId);
+            let existingProduct = vendorProducts.find((p) => p.name == productInformation.name);
+
+            if (existingProduct !== undefined){
+                throw new Error(`Vendor already owns the product with name ${productInformation.name}!`);
+            }
+
+            // Check if other vendor owns the product with the same name
+            let otherVendorsProducts = await connection.query("select p.* from VendorToProduct vp " +
+                "left outer join Product p " +
+                  "on vp.ProductId = p.ProductId " +
+                  `where vp.VendorId != ${vendorId} and p.Name = '${productInformation.name}'`);
+            let otherVendorsProductsConverted: Product[] = otherVendorsProducts[0].map(function(v){
+                return {productId: v["ProductId"], name: v["Name"], description: v["Description"]} as Product;
+            });
+
+            let productId = 0;
+            
+            if (otherVendorsProductsConverted.length == 0){
+                let newProduct = {productId: productInformation.productId, name: productInformation.name, description: productInformation.description} as Product;
+                await connection.models.Product.create(newProduct as any);
+                let newVendorToProductId = await this.getNewId("VendorToProduct", "VendorToProductId");
+                let productReference = {vendorToProductId: newVendorToProductId, vendorId: vendorId, productId: productInformation.productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
+                await connection.models.VendorToProduct.create(productReference as any);
+                productId = newProduct.productId;
+            } else{
+                let newVendorToProductId = await this.getNewId("VendorToProduct", "VendorToProductId");
+                let productReference = {vendorToProductId: newVendorToProductId, vendorId: vendorId, productId: otherVendorsProductsConverted[0].productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
+                await connection.models.VendorToProduct.create(productReference as any);
+                productId = otherVendorsProductsConverted[0].productId;
+            }
+
+            if (productInformation.categories.length == 0){
+                return productInformation;
+            }
+
+            let catIds = productInformation.categories.map(function(c){
+                return c.categoryId;
+            });
+
+            connection.close();
+            await this.createProductCategoryReferencesIfNotExist(productId, catIds);
+            return productInformation;
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        }  
+    }
+
+    public async updateVendorProduct(vendorId: number, vendorToProductId: number, informationToUpdate: ProductInformation): Promise<ProductInformation>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            // Check if vendor exists
+            let foundVendor = await connection.models.Vendor.findByPk(vendorId);
+
+            if (foundVendor == null){
+                throw new Error(`Vendor with ID ${vendorId} does not exist!`);
+            }
+
+            // Check if product belongs to vendor
+            let foundVendorReference = await connection.models.VendorToProduct.findOne({where: {vendorId: vendorId, vendorToProductId: vendorToProductId}});
+
+            if (foundVendorReference == null){
+                throw new Error(`Vendor with ID ${vendorId} does not have a product with vendor's product ID ${vendorToProductId}`);
+            }
+
+            let referenceConverted = foundVendorReference.dataValues as VendorToProduct;
+
+            // Check if the product is already referenced by some customers
+            let orderPositionReference = await connection.models.OrderPosition.findOne({where: {vendorToProductId: vendorToProductId}});
+            let shoppingCartReference = await connection.models.ProductToCart.findOne({where: {vendorToProductId: vendorToProductId}});
+
+            if (orderPositionReference !== null){
+                throw new Error(`The product information about inventory and unit price cannot be updated because it is referenced by another order position!`);
+            }
+
+            if (shoppingCartReference !== null){
+                throw new Error(`The product information about inventory and unit price cannot be updated because it is referenced by an item in a shopping cart!`);
+            }
+
+            // Check if the product already exists
+            let otherExistingProduct = await connection.models.Product.findOne({where: {name: informationToUpdate.name, description: {
+                [Op.like]: informationToUpdate.description
+              }}});
+
+
+            if (otherExistingProduct !== null){
+                let otherProductConverted = otherExistingProduct.dataValues as Product;
+                let updateData = {productId: otherProductConverted.productId, unitPriceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel};
+                await connection.models.VendorToProduct.update(updateData, {where: {vendorToProductId: vendorToProductId}})
+            } else{
+                let newProductId = await this.getNewId("Product", "ProductId");
+                let productData = {productId: newProductId, name: informationToUpdate.name, description: informationToUpdate.description} as Product;
+                await connection.models.Product.create(productData as any);
+                let updateData = {productId: newProductId, unitPriceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel};
+                await connection.models.VendorToProduct.update(updateData, {where: {vendorToProductId: vendorToProductId}})
+            }
+
+            // Remove the old product if it is no longer referenced
+            let otherProductReference = await connection.models.VendorToProduct.findOne({where: {productId: referenceConverted.productId}});
+
+            if (otherProductReference == null){
+                await connection.models.ProductToCategory.destroy({where: {productId: referenceConverted.productId}});
+                await connection.models.Product.destroy({where: {productId: referenceConverted.productId}});
+            }
+
+            connection.close();
+            return informationToUpdate;
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        }  
+    }
+
+    public async removeVedorToProducts(vendorToProductIds: Array<number>): Promise<void>{
+        for (let vpId of vendorToProductIds){
+            await this.removeVendorProduct(vpId);
+        }
+    }
+
+    public async removeVendorProduct(vendorToProductId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            let productReference = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
+
+            // Remove product if it is not referenced
+            if (productReference == null){
+                throw new Error(`Product with vendor's product ID ${vendorToProductId} does not exist!`);
+            }
+
+            let referenceConverted = productReference.dataValues as VendorToProduct;
+
+            // Remove items from product to cart
+            await connection.models.ProductToCart.destroy({where: {vendorToProductId: vendorToProductId}});
+
+            // Remove items from order position
+            await connection.models.OrderPosition.destroy({where: {vendorToProductId: vendorToProductId}});
+
+            // Remove the product reference
+            await connection.models.VendorToProduct.destroy({where: {vendorToProductId: vendorToProductId}});
+            let otherReference = await connection.models.VendorToProduct.findOne({where: {productId: referenceConverted.productId}});
+
+            if (otherReference == null){
+                await connection.models.ProductToCategory.destroy({where: {productId: referenceConverted.productId}});
+                await connection.models.Product.destroy({where: {productId: referenceConverted.productId}});
+            }
+        }
+        catch (err){
+            connection.close();
+            throw err;
+        }  
+    }
+
     public async intializeMSSQL(): Promise<Sequelize>{
         return new Promise<Sequelize>((resolve, reject) => {
             this.connectToMssql().then((sequelize) => {
@@ -391,6 +687,111 @@ export class VendorsService {
                 {
                     tableName: "Vendor",
                     modelName: "Vendor",
+                    createdAt: false,
+                    updatedAt: false
+                }
+            );
+
+
+            sequelize.define("VendorToProduct",
+                {
+                    vendorToProductId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false,
+                        primaryKey: true
+
+                    },
+                    vendorId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    },
+                    productId:{
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    },
+                    unitPriceEuro:{
+                        type: DataTypes.DECIMAL,
+                        allowNull: false
+                    },
+                    inventoryLevel:{
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    }
+                },
+                {
+                    tableName: "VendorToProduct",
+                    modelName: "VendorToProduct",
+                    createdAt: false,
+                    updatedAt: false
+                }
+            );
+
+            sequelize.define("Product",
+                {
+                    productId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false,
+                        primaryKey: true
+
+                    },
+                    name: {
+                        type: DataTypes.STRING,
+                        allowNull: false
+                    },
+                    description:{
+                        type: DataTypes.TEXT,
+                        allowNull: false
+                    }
+                },
+                {
+                    tableName: "Product",
+                    modelName: "Product",
+                    createdAt: false,
+                    updatedAt: false
+                }
+            );
+
+            sequelize.define("Category",
+                {
+                    categoryId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false,
+                        primaryKey: true
+
+                    },
+                    name: {
+                        type: DataTypes.STRING,
+                        allowNull: false
+                    }
+                },
+                {
+                    tableName: "Category",
+                    modelName: "Category",
+                    createdAt: false,
+                    updatedAt: false
+                }
+            );
+
+            sequelize.define("ProductToCategory",
+                {
+                    productToCategoryId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false,
+                        primaryKey: true
+
+                    },
+                    productId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    },
+                    categoryId:{
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    }
+                },
+                {
+                    tableName: "ProductToCategory",
+                    modelName: "ProductToCategory",
                     createdAt: false,
                     updatedAt: false
                 }
@@ -575,6 +976,35 @@ export class VendorsService {
                 {
                     tableName: "CustomerOrder",
                     modelName: "CustomerOrder",
+                    createdAt: false,
+                    updatedAt: false
+                }
+            );
+
+            sequelize.define("ProductToCart",
+                {
+                    productToCartId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false,
+                        primaryKey: true
+
+                    },
+                    vendorToProductId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    },
+                    cartId: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    },
+                    amount: {
+                        type: DataTypes.INTEGER,
+                        allowNull: false
+                    }
+                },
+                {
+                    tableName: "ProductToCart",
+                    modelName: "ProductToCart",
                     createdAt: false,
                     updatedAt: false
                 }

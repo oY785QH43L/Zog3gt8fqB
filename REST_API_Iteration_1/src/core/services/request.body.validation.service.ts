@@ -18,6 +18,17 @@ import { UpdateVendorRequestBody } from '../../models/request.bodies/vendor.requ
 import { AddVendorAddressRequestBody } from '../../models/request.bodies/vendor.request.bodies/add.vendor.address.request.body';
 import { UpdateVendorAddressRequestBody } from '../../models/request.bodies/vendor.request.bodies/update.vendor.address.request.body';
 import { CreateVendorProductRequestBody } from '../../models/request.bodies/vendor.request.bodies/create.vendor.product.request.body/create.vendor.product.request.body';
+import { UpdateVendorProductRequestBody } from '../../models/request.bodies/vendor.request.bodies/update.vendor.product.request.body';
+import { AddCategoryRequestBody } from '../../models/request.bodies/vendor.request.bodies/add.category.request.body';
+import { RemoveCategoryRequestBody } from '../../models/request.bodies/vendor.request.bodies/remove.category.request.body';
+import { CreateSupplierRequestBody } from '../../models/request.bodies/admin.request.bodies/create.supplier.request.body/create.supplier.request.body';
+import { CreateSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/create.supplier.request.body/create.supplier.address.request.body';
+import { UpdateSupplierRequestBody } from '../../models/request.bodies/admin.request.bodies/update.supplier.request.body';
+import { AddSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/add,supplier.address.request.body';
+import { UpdateSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/update.supplier.address.request.body';
+import { RemoveSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/remove.supplier.address.request.body';
+import { CreateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/create.category.request.body';
+import { UpdateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/update.category.request.body';
 
 /**
  * The customers service.
@@ -391,6 +402,220 @@ export class RequestBodyValidationService {
             if (el.categoryId === undefined || el.categoryId === null){
                 throw new Error("Property categoryId cannot be empty!");
             }
+        }
+    }
+
+    public validateUpdateVendorProductRequestBody(body: UpdateVendorProductRequestBody){
+        if (body.vendorId === undefined || body.vendorId === null){
+            throw new Error("Property vendorId cannot be empty!");
+        }
+
+        if (body.unitPriceEuro === undefined || body.unitPriceEuro === null){
+            throw new Error("Property unitPriceEuro cannot be empty!");
+        }
+
+        if (body.unitPriceEuro <= 0){
+            throw new Error("Property unitPriceEuro cannot be less or equal to 0!");
+        }
+
+        if (body.inventoryLevel === undefined || body.inventoryLevel === null){
+            throw new Error("Property unitPriceEuro cannot be empty!");
+        }
+
+        if (body.inventoryLevel < 0){
+            throw new Error("Property inventoryLevel cannot be less than 0!");
+        }   
+        
+        if (body.name === undefined || body.name === null || body.name.length === 0){
+            throw new Error("Property name cannot be empty!");
+        }
+
+        if (body.description === undefined || body.description === null || body.description.length === 0){
+            throw new Error("Property description cannot be empty!");
+        }
+    }
+
+    public validateAddCategoryRequestBody(body: AddCategoryRequestBody){
+        if (body.vendorId === undefined || body.vendorId === null){
+            throw new Error("Property vendorId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.categoryId === undefined || body.categoryId === null){
+            throw new Error("Property categoryId cannot be empty!");
+        }
+    }
+
+    public validateRemoveCategoryRequestBody(body: RemoveCategoryRequestBody){
+        if (body.vendorId === undefined || body.vendorId === null){
+            throw new Error("Property vendorId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.categoryId === undefined || body.categoryId === null){
+            throw new Error("Property categoryId cannot be empty!");
+        }
+    }
+
+    public validateCreateSupplierRequestBody(body: CreateSupplierRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length == 0){
+            throw new Error("Property name cannot be empty!");
+        }
+
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+            throw new Error("Property phoneNumber cannot be empty!");
+        }
+
+        if (body.email === undefined || body.email === null || body.email.length == 0){
+            throw new Error("Property email cannot be empty!");
+        }
+
+        if (body.addresses.length == 0){
+            return;
+        }
+
+        for (let address of body.addresses){
+            this.validateCreateSupplierAddressRequestBody(address);
+        }
+    }
+
+    public validateCreateSupplierAddressRequestBody(body: CreateSupplierAddressRequestBody){
+        if (body.city === undefined || body.city === null || body.city.length == 0){
+            throw new Error("Property city cannot be empty!");
+        }
+
+        if (body.country === undefined || body.country === null || body.country.length == 0){
+            throw new Error("Property country cannot be empty!");
+        }
+
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+            throw new Error("Property postalCode cannot be empty!");
+        }
+
+        if (body.street === undefined || body.street === null || body.street.length == 0){
+            throw new Error("Property street cannot be empty!");
+        }
+    }
+
+    public validateUpdateSupplierRequestBody(body: UpdateSupplierRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length == 0){
+            throw new Error("Property name cannot be empty!");
+        }
+
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+            throw new Error("Property phoneNumber cannot be empty!");
+        }
+
+        if (body.email === undefined || body.email === null || body.email.length == 0){
+            throw new Error("Property email cannot be empty!");
+        }
+    }
+
+    public validateAddSupplierAddressRequestBody(body: AddSupplierAddressRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.supplierId === undefined || body.supplierId === null){
+            throw new Error("Property supplierId cannot be empty!");
+        }
+
+        if (body.city === undefined || body.city === null || body.city.length == 0){
+            throw new Error("Property city cannot be empty!");
+        }
+
+        if (body.country === undefined || body.country === null || body.country.length == 0){
+            throw new Error("Property country cannot be empty!");
+        }
+
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+            throw new Error("Property postalCode cannot be empty!");
+        }
+
+        if (body.street === undefined || body.street === null || body.street.length == 0){
+            throw new Error("Property street cannot be empty!");
+        }
+    }
+
+    public validateUpdateSupplierAddressRequestBody(body: UpdateSupplierAddressRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.addressId === undefined || body.addressId === null){
+            throw new Error("Property addressId cannot be empty!");
+        }
+
+        if (body.supplierId === undefined || body.supplierId === null){
+            throw new Error("Property supplierId cannot be empty!");
+        }
+
+        if (body.city === undefined || body.city === null || body.city.length == 0){
+            throw new Error("Property city cannot be empty!");
+        }
+
+        if (body.country === undefined || body.country === null || body.country.length == 0){
+            throw new Error("Property country cannot be empty!");
+        }
+
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+            throw new Error("Property postalCode cannot be empty!");
+        }
+
+        if (body.street === undefined || body.street === null || body.street.length == 0){
+            throw new Error("Property street cannot be empty!");
+        }
+    }
+
+    public validateRemoveSupplierAddressRequestBody(body: RemoveSupplierAddressRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.addressId === undefined || body.addressId === null){
+            throw new Error("Property addressId cannot be empty!");
+        }
+
+        if (body.supplierId === undefined || body.supplierId === null){
+            throw new Error("Property supplierId cannot be empty!");
+        }
+    }
+
+    public validateCreateCategoryRequestBody(body: CreateCategoryRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length === 0){
+            throw new Error("Property name cannot be empty!");
+        }
+    }
+
+    public validateUpdateCategoryRequestBody(body: UpdateCategoryRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.categoryId === undefined || body.categoryId === null){
+            throw new Error("Property categoryId cannot be empty!");
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length === 0){
+            throw new Error("Property name cannot be empty!");
         }
     }
 }

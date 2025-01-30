@@ -11,6 +11,8 @@ import { RedisDatabaseService } from '../services/redis.database.service';
 import { VendorsController } from '../../api/vendors.controller';
 import { VendorsService } from '../services/vendors.service';
 import { VendorsSessionService } from '../services/vendors.session.service';
+import { AdminService } from '../services/admin.service';
+import { AdminController } from '../../api/admin.controller';
 
 /**
  * The IoC container.
@@ -43,6 +45,7 @@ export class IoContainer{
     private initControllers(): void{
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(CustomersController).whenTargetNamed(CustomersController.name);
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(VendorsController).whenTargetNamed(VendorsController.name);
+        this.container.bind<interfaces.Controller>(TYPE.Controller).to(AdminController).whenTargetNamed(AdminController.name);
     }
 
     /**
@@ -52,6 +55,7 @@ export class IoContainer{
         this.container.bind<LoggerService>(LoggerService.name).to(LoggerService).inSingletonScope();
         this.container.bind<CustomersService>(CustomersService.name).to(CustomersService).inSingletonScope();
         this.container.bind<VendorsService>(VendorsService.name).to(VendorsService).inSingletonScope();
+        this.container.bind<AdminService>(AdminService.name).to(AdminService).inSingletonScope();
         this.container.bind<CustomersSessionService>(CustomersSessionService.name).to(CustomersSessionService).inSingletonScope();
         this.container.bind<VendorsSessionService>(VendorsSessionService.name).to(VendorsSessionService).inSingletonScope();
         this.container.bind<HashingService>(HashingService.name).to(HashingService).inSingletonScope();

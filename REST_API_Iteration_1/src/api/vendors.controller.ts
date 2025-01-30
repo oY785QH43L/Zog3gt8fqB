@@ -15,6 +15,12 @@ import { Op } from 'sequelize';
 import { AddVendorAddressRequestBody } from '../models/request.bodies/vendor.request.bodies/add.vendor.address.request.body';
 import { UpdateVendorAddressRequestBody } from '../models/request.bodies/vendor.request.bodies/update.vendor.address.request.body';
 import { CreateVendorProductRequestBody } from '../models/request.bodies/vendor.request.bodies/create.vendor.product.request.body/create.vendor.product.request.body';
+import { ProductInformation } from '../models/product.information.model';
+import { Category } from '../models/category.model';
+import { UpdateVendorProductRequestBody } from '../models/request.bodies/vendor.request.bodies/update.vendor.product.request.body';
+import { AddCategoryRequestBody } from '../models/request.bodies/vendor.request.bodies/add.category.request.body';
+import { VendorToProduct } from '../models/vendor.to.product.model';
+import { RemoveCategoryRequestBody } from '../models/request.bodies/vendor.request.bodies/remove.category.request.body';
 
 
 @controller("/vendor")
@@ -162,7 +168,7 @@ export class VendorsController implements interfaces.Controller{
      * }
      * @param response The response.Format:
      * {
-     *   id: number
+     *   message: string
      * }
      */
     @httpPut("/account/update/:vid")
@@ -269,6 +275,50 @@ export class VendorsController implements interfaces.Controller{
                 addresses: addresses
             };
             response.status(200).json(result);
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Deletes the account.
+     * @param request The request body.
+     * @param response The response.Format:
+     * {
+     *   message: string
+     * }
+     */
+    @httpDelete("/account/:vid")
+    public async deleteAccount(request: Request, response: Response): Promise<void>{
+        try{
+                let vendorId = Number(request.params.vid)
+                let verified = await this.vendorSessionService.verifyVendor(vendorId);
+
+                if (!verified){
+                    response.status(403).json({message: "Unauthorized!"});
+                    return;
+                }
+
+
+            // Delete all products
+            let connection = await this.vendorsService.intializeMSSQL();
+            let ids = await connection.models.VendorToProduct.findAll({attributes: ["vendorToProductId"],where: {vendorId: vendorId}});
+            let idValues = ids.map(function(v){
+                return Number(v.dataValues["vendorToProductId"]);
+            });
+            connection.close();
+            await this.vendorsService.removeVedorToProducts(idValues);
+
+            // Delete all addresses 
+            let addresses = await this.vendorsService.getVendorAddresses(vendorId);
+            await this.vendorsService.deleteVendorAddresses(addresses.map(add => add.addressId), vendorId);
+
+            // Delete the final account
+             connection = await this.vendorsService.intializeMSSQL();
+             await connection.models.Vendor.destroy({where: {vendorId: vendorId}});
+             connection.close();
+             response.status(200).json({message: `Vendor with ID ${vendorId} was successfully deleted!`});
         }
         catch (err){
             response.status(500).json({message: err.message});
@@ -402,7 +452,7 @@ export class VendorsController implements interfaces.Controller{
      *  }
      */
     @httpDelete("/address/:vid/:aid")
-    public async deleteCustomerAddress(request: Request, response: Response): Promise<void>{
+    public async deleteVendorAddress(request: Request, response: Response): Promise<void>{
         try{
             let vendorId = Number(request.params.vid);
             let addressId = Number(request.params.aid);
@@ -450,19 +500,7 @@ export class VendorsController implements interfaces.Controller{
                 return;
             }
 
-            let connection = await this.vendorsService.intializeMSSQL();
-            let data = await connection.query("select a.* from Vendor v left outer join VendorToAddress va " +
-                                              "on v.VendorId = va.VendorId " +
-                                                "left outer join Address a " +
-                                                "on va.AddressId = a.AddressId " +
-                                                `where v.VendorId = ${vendorId}`);
-            connection.close();
-            let addresses: Address[] = data[0].map(function(information){
-                let a = {addressId: information["AddressId"], street: information["Street"], 
-                    city: information["City"], postalCode: information["PostalCode"], 
-                    country: information["Country"]} as Address;
-                return a;
-            });
+            let addresses = this.vendorsService.getVendorAddresses(vendorId);
             response.status(200).json({"addresses": addresses});
         }
         catch (err){
@@ -495,9 +533,329 @@ export class VendorsController implements interfaces.Controller{
     public async addVendorProduct(request: Request, response: Response): Promise<void>{
         try{
             let createVendorProductRequestBody: CreateVendorProductRequestBody = request.body as CreateVendorProductRequestBody;
+
+            try{
+                this.requestBodyValidationService.validateCreateVendorProductRequestBody(createVendorProductRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
             
-         
+            let verified = await this.vendorSessionService.verifyVendor(createVendorProductRequestBody.vendorId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let categories: Category[] = [];
+
+            // Check if categories exist
+            if (createVendorProductRequestBody.categories.length !== 0){
+                let ids = createVendorProductRequestBody.categories.map((c) => c.categoryId);
+                let connection = await this.vendorsService.intializeMSSQL();
+                let data = await connection.models.Category.findAll({where: {categoryId: {[Op.in]: ids}}});
+
+                if (data.length != createVendorProductRequestBody.categories.length){
+                    response.status(400).json({message: "Non existing categories detected!"});
+                    connection.close();
+                    return;
+                }
+
+                categories = data.map(function(c){
+                    return {categoryId: c.dataValues["categoryId"], name: c.dataValues["name"]} as Category;
+                });
+
+                connection.close();
+            }
+
+            // Generate new product ID
+            let newId = await this.vendorsService.getNewId("Product", "ProductId");
+            let productInformation = {productId: newId, name: createVendorProductRequestBody.name, description: createVendorProductRequestBody.description,
+                unitPriceEuro: createVendorProductRequestBody.unitPriceEuro, inventoryLevel: createVendorProductRequestBody.inventoryLevel,
+                categories: categories
+            } as ProductInformation;
+            let product = await this.vendorsService.createNewVendorProduct(createVendorProductRequestBody.vendorId, productInformation);
+            response.status(200).json({message: "The product was successfully created!"});
         }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Updates a vendor product.
+     * @param request The request body. Format:
+     * {
+     *   vendorId: number,
+     *   vendorToProductId: number,
+     *   unitPriceEuro: number,
+     *   inventoryLevel: number,
+     *   name: string,
+     *   description: string
+     * }
+     * @param response The response. Format
+     *  {
+     *    message: string,
+     *    updatedData: {
+     *       unitPriceEuro: number,
+     *       inventoryLevel: number,
+     *       name: string,
+     *       description: string
+     *    }
+     *  }
+     */
+    @httpPut("/product/update/:pid")
+    public async updateVendorProduct(request: Request, response: Response): Promise<void>{
+        try{
+            let updateVendorProductRequestBody: UpdateVendorProductRequestBody = request.body as UpdateVendorProductRequestBody;
+
+            try{
+                this.requestBodyValidationService.validateUpdateVendorProductRequestBody(updateVendorProductRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+            
+            let verified = await this.vendorSessionService.verifyVendor(updateVendorProductRequestBody.vendorId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let vendorToProductId = Number(request.params.pid);
+
+            if (vendorToProductId !== updateVendorProductRequestBody.vendorToProductId){
+                response.status(400).json({message: "Vendor's product ID in the request parameters and in the request body do not match!"});
+                return;
+            }
+
+            let updateInformation = {productId: -1, name: updateVendorProductRequestBody.name, description: updateVendorProductRequestBody.description,
+                unitPriceEuro: updateVendorProductRequestBody.unitPriceEuro, inventoryLevel: updateVendorProductRequestBody.inventoryLevel,
+                categories: []
+            } as ProductInformation;
+            let updateInfo = await this.vendorsService.updateVendorProduct(updateVendorProductRequestBody.vendorId, vendorToProductId, updateInformation);
+            let resultObject = {
+                message: "The product was successfully updated!", 
+                updatedData: {
+                    unitPriceEuro: updateInformation.unitPriceEuro,
+                    inventoryLevel: updateInformation.inventoryLevel,
+                    name: updateInformation.name,
+                    description: updateInformation.description
+            }};
+
+            response.status(201).json(resultObject);
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Retrieves products offered by the vendor (his own products).
+     * @param request The request body.
+     * @param response The reponse body. Format:
+     * {
+     *   "result": [
+     *   {
+     *       productId: number
+     *       name: string,
+     *       description: string,
+     *       unitPriceEuro: decimal,
+     *       inventoryLevel: number,
+     *       categories: [
+     *         {
+     *           categoryId: number,
+     *           name: string
+     *         },
+     *        ...
+     *       ]
+     *    },
+     *   ... 
+     *    ]
+     * }
+     */
+    @httpGet("/product/:vid")
+    public async getVendorProducts(request: Request, response: Response): Promise<void>{
+        try{
+            let vendorId = Number(request.params.vid); 
+            let verified = await this.vendorSessionService.verifyVendor(vendorId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let productInformation : ProductInformation[] = await this.vendorsService.getVendorProducts(vendorId);
+            let resultObject = {result: productInformation};
+            response.status(201).json(resultObject);
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Removes a vendor product.
+     * @param request The request body.
+     * @param response The response. Format
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpDelete("/product/:vid/:pid")
+    public async removeVendorProduct(request: Request, response: Response): Promise<void>{
+        try{
+            let vendorId = Number(request.params.vid); 
+            let vendorToProductId = Number(request.params.pid);
+
+            let verified = await this.vendorSessionService.verifyVendor(vendorId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            // Check if the product belongs to the vendor
+            let connection = await this.vendorsService.intializeMSSQL();
+            let vendorReference = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId, vendorId: vendorId}});
+
+            if (vendorReference == null){
+                response.status(400).json({message: `Vendor's product with ID ${vendorToProductId} does not belong to vendor ${vendorId}!`});
+                return;
+            }
+            
+            connection.close();
+            await this.vendorsService.removeVendorProduct(vendorToProductId);
+            response.status(200).json({message: `The vendor's product with ID ${vendorToProductId} was successfully deleted!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Adds a category to the global product definition.
+     * @param request The request body. Format:
+     * {
+     *   vendorId: number;
+     *   vendorToProductId: number;
+     *   categoryId: number;
+     * }
+     * @param response The response body. Format:
+     * {
+     *   message: string
+     * }
+     */
+    @httpPost("/product/addcategory")
+    public async addCategory(request: Request, response: Response): Promise<void>{
+        try{
+            let addCategoryRequestBody: AddCategoryRequestBody = request.body as AddCategoryRequestBody;
+
+            try{
+                this.requestBodyValidationService.validateAddCategoryRequestBody(addCategoryRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+            
+            let verified = await this.vendorSessionService.verifyVendor(addCategoryRequestBody.vendorId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            // Check if the product belongs to the vendor
+            let connection = await this.vendorsService.intializeMSSQL();
+            let vendorReference = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: addCategoryRequestBody.vendorToProductId, vendorId: addCategoryRequestBody.vendorId}});
+
+            if (vendorReference == null){
+                response.status(400).json({message: `Vendor's product with ID ${addCategoryRequestBody.vendorToProductId} does not belong to vendor ${addCategoryRequestBody.vendorId}!`});
+                return;
+            }
+
+            // Check if the category exists
+            let categoryFound = await connection.models.Category.findOne({where: {categoryId: addCategoryRequestBody.categoryId}});
+            connection.close();
+
+            if (categoryFound == null){
+                response.status(400).json({message: `Category with ID ${addCategoryRequestBody.categoryId} does not exist!`});
+                return;
+            }
+
+            let referenceConverted = vendorReference.dataValues as VendorToProduct;
+            await this.vendorsService.createProductCategoryReferenceIfNotExist(referenceConverted.productId, addCategoryRequestBody.categoryId);
+            response.status(201).json({message: `Category with ID ${addCategoryRequestBody.categoryId} was successfully added to product with ID ${referenceConverted.productId}!`});
+        }        
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Adds a category to the global product definition.
+     * @param request The request body. Format:
+     * {
+     *   vendorId: number;
+     *   vendorToProductId: number;
+     *   categoryId: number;
+     * }
+     * @param response The response body. Format:
+     * {
+     *   message: string
+     * }
+     */
+    @httpPut("/product/removecategory")
+    public async removeCategory(request: Request, response: Response): Promise<void>{
+        try{
+            let removeCategoryRequestBody: RemoveCategoryRequestBody = request.body as RemoveCategoryRequestBody;
+    
+            try{
+                this.requestBodyValidationService.validateRemoveCategoryRequestBody(removeCategoryRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+            
+            let verified = await this.vendorSessionService.verifyVendor(removeCategoryRequestBody.vendorId);
+    
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+    
+            // Check if the product belongs to the customer
+            let connection = await this.vendorsService.intializeMSSQL();
+            let vendorReference = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: removeCategoryRequestBody.vendorToProductId, vendorId: removeCategoryRequestBody.vendorId}});
+    
+            if (vendorReference == null){
+                response.status(400).json({message: `Vendor's product with ID ${removeCategoryRequestBody.vendorToProductId} does not belong to vendor ${removeCategoryRequestBody.vendorId}!`});
+                return;
+            }
+    
+            // Check if the category exists
+            let categoryFound = await connection.models.Category.findOne({where: {categoryId: removeCategoryRequestBody.categoryId}});
+    
+            if (categoryFound == null){
+                response.status(400).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} does not exist!`});
+                return;
+            }
+
+            // Check if the product has the category
+            let referenceConverted = vendorReference.dataValues as VendorToProduct;
+            let foundProductCategory = await connection.models.ProductToCategory.findOne({where: {categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId}});
+
+            if (foundProductCategory == null){
+                response.status(400).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} does not exist for product with ID ${referenceConverted.productId}!`});
+                return;
+            }
+
+            await connection.models.ProductToCategory.destroy({where: {categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId}});
+            connection.close();
+            response.status(201).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!`});
+        }        
         catch (err){
             response.status(500).json({message: err.message});
         }
