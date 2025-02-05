@@ -12,4 +12,8 @@ Following libraries have to be installed using npm:
 * jsonwebtoken (for JWT token handling)
 * redis (for session management)
 * tedious (MSSQL client for Node.js)
+* neo4j
+* neo4j-driver
+* mongoose
+* mongodb
 
