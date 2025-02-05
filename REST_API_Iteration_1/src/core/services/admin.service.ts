@@ -53,17 +53,17 @@ export class AdminService {
 
         try{
             let id = await connection.models[entityName].max(attributeName);
-            connection.close();
+            await connection.close();
 
             if (id == null){
                 return 0;
             }
 
-            connection.close();
+            await connection.close();
             return Number(id) + 1;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }
     }
@@ -73,11 +73,11 @@ export class AdminService {
 
         try{
             let supplier = await connection.models.Supplier.findOne({where: {name: name}});
-            connection.close();
+            await connection.close();
             return supplier !== null;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }
     }
@@ -89,17 +89,17 @@ export class AdminService {
             let foundSupplier = await connection.models.Supplier.findByPk(supplier.supplierId);
 
             if (foundSupplier !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Supplier with ID ${supplier.supplierId} already exists!`);
             }
 
             let created = await connection.models.Supplier.create(supplier as any);
             let createdConverted = created.dataValues as Supplier;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }    
     }
@@ -111,7 +111,7 @@ export class AdminService {
             let foundAddressByPk = await connection.models.Address.findByPk(address.addressId);
 
             if (foundAddressByPk !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with ID ${address.addressId} already exists!`);
             }
 
@@ -119,17 +119,17 @@ export class AdminService {
             let foundAddress = await connection.models.Address.findOne({where: whereClause});
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with the given data already exists!`);
             }
 
             let created = await connection.models.Address.create(address as any);
             let createdConverted = created.dataValues as Address;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -141,7 +141,7 @@ export class AdminService {
             let foundAddress = await connection.models.Address.findByPk(address.addressId);
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with ID ${address.addressId} already exists!`);
             }
 
@@ -156,11 +156,11 @@ export class AdminService {
             let newAddress = await this.createNewAddress(address);
             let createdReference = await this.createNewSupplierAddressReference(newAddress, supplier);
             let createdConverted  = newAddress;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -173,7 +173,7 @@ export class AdminService {
             let foundAddress = await connection.models.SupplierToAddress.findOne({where: whereClause});
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Supplier address reference with address ID ${address.addressId} and supplier ID ${supplier.supplierId} already exists!`);
             }
 
@@ -182,11 +182,11 @@ export class AdminService {
             let supplierToAddress = {supplierToAddressId: newId, addressId: address.addressId, supplierId: supplier.supplierId} as SupplierToAddress;
             let created = await connection.models.SupplierToAddress.create(supplierToAddress as any);
             let createdConverted = created.dataValues as SupplierToAddress;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -221,44 +221,44 @@ export class AdminService {
             let foundCustomerResult = await foundCustomerReference;
 
             if (foundCustomerResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundVendorResult = await foundVendorReference;
 
             if (foundVendorResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundSupplierResult = await foundSupplierReference;
 
             if (foundSupplierResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundDeliveryResult = await foundDeliveryReference;
 
             if (foundDeliveryResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundOrderResult = await foundOrderReference;
 
             if (foundOrderResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             await connection.models.Address.destroy({where: {addressId: address.addressId}});
-            connection.close();
+            await connection.close();
             return addressToReturn;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -268,22 +268,23 @@ export class AdminService {
 
         try{
             if (supplier.supplierId !== supplierId){
+                await connection.close();
                 throw new Error(`IDs ${supplierId} and ${supplier.supplierId} do not match!`)
             }
 
             let foundSupplier = await connection.models.Supplier.findByPk(supplier.supplierId);
 
             if (foundSupplier == null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Supplier with ID ${supplier.supplierId} does not exist!`);
             }
 
             await connection.models.Supplier.update(supplier, {where: {supplierId: supplierId}});
-            connection.close();
+            await connection.close();
             return supplier;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }    
     }
@@ -315,44 +316,44 @@ export class AdminService {
             let foundCustomerResult = await foundCustomerReference;
 
             if (foundCustomerResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundVendorResult = await foundVendorReference;
 
             if (foundVendorResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundSupplierResult = await foundSupplierReference;
 
             if (foundSupplierResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundDeliveryResult = await foundDeliveryReference;
 
             if (foundDeliveryResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundOrderResult = await foundOrderReference;
 
             if (foundOrderResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             await connection.models.Address.destroy({where: {addressId: addressId}});
-            connection.close();
+            await connection.close();
             return;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -364,21 +365,23 @@ export class AdminService {
             let foundCategory = await connection.models.Category.findOne({where: {categoryId: category.categoryId}});
 
             if (foundCategory !== null){
+                await connection.close();
                 throw new Error(`Category with ID ${category.categoryId} already exists!`);
             }
 
             let foundCategoryByName = await connection.models.Category.findOne({where:  {name: category.name}});
 
             if (foundCategoryByName !== null){
+                await connection.close();
                 throw new Error(`Category with name '${category.name}' already exists!`);
             }
             
             await connection.models.Category.create(category as any);
-            connection.close();
+            await connection.close();
             return category;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -388,27 +391,30 @@ export class AdminService {
 
         try{
             if (categoryId != categoryData.categoryId){
+                await connection.close();
                 throw new Error("categoryId and categoryData.categoryId do not match!");
             }
 
             let foundCategory = await connection.models.Category.findOne({where: {categoryId: categoryId}});
 
             if (foundCategory == null){
+                await connection.close();
                 throw new Error(`Category with ID ${categoryData.categoryId} does not exist!`);
             }
 
             let foundCategoryByName = await connection.models.Category.findOne({where:  {name: categoryData.name, categoryId: {[Op.ne]: categoryId}}});
 
             if (foundCategoryByName !== null){
+                await connection.close();
                 throw new Error(`Category with name '${categoryData.name}' already exists!`);
             }
             
             await connection.models.Category.update({name: categoryData.name}, {where: {categoryId: categoryId}});
-            connection.close();
+            await connection.close();
             return categoryData;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -420,20 +426,22 @@ export class AdminService {
             let foundCategory = await connection.models.Category.findOne({where: {categoryId: categoryId}});
 
             if (foundCategory == null){
+                await connection.close();
                 throw new Error(`Category with ID ${categoryId} does not exist!`);
             }
 
             let foundCategoryByReference = await connection.models.ProductToCategory.findOne({where: {categoryId: categoryId}});
 
             if (foundCategoryByReference !== null){
+                await connection.close();
                 throw new Error(`Category with name ID ${categoryId} is referenced and cannot be deleted!`);
             }
             
             await connection.models.Category.destroy({where: {categoryId: categoryId}});
-            connection.close();
+            await connection.close();
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         } 
     }

@@ -272,7 +272,7 @@ export class CustomersController implements interfaces.Controller{
                                                 "left outer join Address a " +
                                                 "on ca.AddressId = a.AddressId " +
                                                 `where c.CustomerId = ${request.params.kid}`);
-            connection.close();
+            await connection.close();
             let addresses: Address[] = data[0].map(function(information){
                 let a = {addressId: information["AddressId"], street: information["Street"], 
                     city: information["City"], postalCode: information["PostalCode"], 
@@ -352,7 +352,7 @@ export class CustomersController implements interfaces.Controller{
 
             // Delete the customer
             await connection.models.Customer.destroy({where: {customerId: customerId}});
-            connection.close();
+            await connection.close();
             response.status(200).json({message: `The customer with ID ${customerId} was successfully deleted!`});
         }
         catch (err){
@@ -398,7 +398,7 @@ export class CustomersController implements interfaces.Controller{
             let connection = await this.customersService.intializeMSSQL();
             let foundUser = await connection.models.Customer.findOne({where: {customerId: addAddressRequestBody.customerId}});
             let userConverted = foundUser.dataValues as Customer;
-            connection.close();
+            await connection.close();
 
             // Save address data
             let addressId = await this.customersService.getNewId("Address", "AddressId");
@@ -464,7 +464,7 @@ export class CustomersController implements interfaces.Controller{
             let connection = await this.customersService.intializeMSSQL();
             let foundUser = await connection.models.Customer.findOne({where: {customerId: updateAddressRequestBody.customerId}});
             let userConverted = foundUser.dataValues as Customer;
-            connection.close();
+            await connection.close();
             
             let addressData = {addressId: updateAddressRequestBody.addressId, 
                 street: updateAddressRequestBody.street, city: updateAddressRequestBody.city,
@@ -541,7 +541,7 @@ export class CustomersController implements interfaces.Controller{
                                                 "left outer join Address a " +
                                                 "on ca.AddressId = a.AddressId " +
                                                 `where c.CustomerId = ${customerId}`);
-            connection.close();
+            await connection.close();
             let addresses: Address[] = data[0].map(function(information){
                 let a = {addressId: information["AddressId"], street: information["Street"], 
                     city: information["City"], postalCode: information["PostalCode"], 
@@ -650,7 +650,7 @@ export class CustomersController implements interfaces.Controller{
 
             let connection = await this.customersService.intializeMSSQL();
             let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: addProductToCartRequestBody.customerId, cartId: addProductToCartRequestBody.shoppingCartId}});
-            connection.close();
+            await connection.close();
 
             if (cartCustomerConnection == null){
                 response.status(400).json({message: `Invalid shopping cart with ID ${addProductToCartRequestBody.shoppingCartId} detected!`});
@@ -700,7 +700,7 @@ export class CustomersController implements interfaces.Controller{
 
             let connection = await this.customersService.intializeMSSQL();
             let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: removeProductFromCartRequestBody.customerId, cartId: removeProductFromCartRequestBody.shoppingCartId}});
-            connection.close();
+            await connection.close();
 
             if (cartCustomerConnection == null){
                 response.status(400).json({message: `Invalid shopping cart with ID ${removeProductFromCartRequestBody.shoppingCartId} detected!`});
@@ -791,7 +791,7 @@ export class CustomersController implements interfaces.Controller{
 
             let connection = await this.customersService.intializeMSSQL();
             let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: makeOrderRequestBody.customerId, cartId: makeOrderRequestBody.shoppingCartId}});
-            connection.close();
+            await connection.close();
 
             if (cartCustomerConnection == null){
                 response.status(400).json({message: `Invalid shopping cart with ID ${makeOrderRequestBody.shoppingCartId} detected!`});

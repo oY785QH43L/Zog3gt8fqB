@@ -1,31 +1,24 @@
 {
-  "name": "rest_api_iteration_1",
+  "name": "rest_api_iteration_2",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "The application is a Node.js REST-API written in TypeScript.\r It demonstrates a simple REST-API that works with a polyglot persistence model (relational, graph and document database).\r Following libraries have to be installed using npm:",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
-  },
   "dependencies": {
-    "@sequelize/core": "^7.0.0-alpha.43",
-    "@sequelize/mssql": "^7.0.0-alpha.43",
-    "@types/sequelize": "^4.28.20",
     "bcrypt": "^5.1.1",
-    "bcrypt-ts": "^5.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "install": "^0.13.0",
     "inversify-express-utils": "^4.2.2",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.13.0",
+    "mongoose": "^6.0.1",
+    "neo4j": "^2.0.0-RC2",
+    "neo4j-driver": "^5.27.0",
     "redis": "^4.7.0",
     "sequelize": "^6.37.5",
     "swagger-express-ts": "^1.1.0",

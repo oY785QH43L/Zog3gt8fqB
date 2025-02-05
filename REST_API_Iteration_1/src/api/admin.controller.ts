@@ -135,10 +135,10 @@ export class AdminController implements interfaces.Controller{
                 return;
             }
 
-            // Find similar customer
+            // Find similar supplier
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {name: updateRequestBody.name, supplierId: {[Op.ne]: updateRequestBody.supplierId}}});
-            connection.close();
+            await connection.close();
 
             if (foundSupplier !== null){
                 response.status(400).json({message: `The given name ${updateRequestBody.name} already exists!`});
@@ -182,7 +182,7 @@ export class AdminController implements interfaces.Controller{
 
             if (existingOrderPosition !== null){
                 response.status(400).json({message: `Supplier cannot be removed as it is referenced by an order position!`});
-                connection.close();
+                await connection.close();
                 return;
             }
 
@@ -196,7 +196,7 @@ export class AdminController implements interfaces.Controller{
 
             // Delete the supplier
             await connection.models.Supplier.destroy({where: {supplierId: supplierId}});
-            connection.close();
+            await connection.close();
             response.status(200).json({message: `The supplier with ID ${supplierId} was successfully deleted!`});
         }
         catch (err){
@@ -241,7 +241,7 @@ export class AdminController implements interfaces.Controller{
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {supplierId: addAddressRequestBody.supplierId}});
             let supplierConverted = foundSupplier.dataValues as Supplier;
-            connection.close();
+            await connection.close();
 
             // Save address data
             let addressId = await this.adminService.getNewId("Address", "AddressId");
@@ -281,7 +281,7 @@ export class AdminController implements interfaces.Controller{
      *  }
      */
     @httpPut("/supplier/address/update/:aid")
-    public async updateCustomerAddress(request: Request, response: Response): Promise<void>{
+    public async updateSupplierAddress(request: Request, response: Response): Promise<void>{
         try{
             let updateAddressRequestBody: UpdateSupplierAddressRequestBody = request.body as UpdateSupplierAddressRequestBody;
             
@@ -306,7 +306,7 @@ export class AdminController implements interfaces.Controller{
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {supplierId: updateAddressRequestBody.supplierId}});
             let supplierConverted = foundSupplier.dataValues as Supplier;
-            connection.close();
+            await connection.close();
             
             let addressData = {addressId: updateAddressRequestBody.addressId, 
                 street: updateAddressRequestBody.street, city: updateAddressRequestBody.city,

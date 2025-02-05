@@ -51,17 +51,17 @@ export class CustomersService {
 
         try{
             let id = await connection.models[entityName].max(attributeName);
-            connection.close();
+            await connection.close();
 
             if (id == null){
                 return 0;
             }
 
-            connection.close();
+            await connection.close();
             return Number(id) + 1;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }
     }
@@ -71,11 +71,11 @@ export class CustomersService {
 
         try{
             let user = await connection.models.Customer.findOne({where: {userName: userName}});
-            connection.close();
+            await connection.close();
             return user !== null;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }
     }
@@ -87,17 +87,17 @@ export class CustomersService {
             let foundCustomer = await connection.models.Customer.findByPk(customer.customerId);
 
             if (foundCustomer !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Customer with ID ${customer.customerId} already exists!`);
             }
 
             let created = await connection.models.Customer.create(customer as any);
             let createdConverted = created.dataValues as Customer;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }    
     }
@@ -107,22 +107,23 @@ export class CustomersService {
 
         try{
             if (customer.customerId !== customerId){
+                await connection.close();
                 throw new Error(`IDs ${customerId} and ${customer.customerId} do not match!`)
             }
 
             let foundCustomer = await connection.models.Customer.findByPk(customer.customerId);
 
             if (foundCustomer == null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Customer with ID ${customer.customerId} does not exist!`);
             }
 
             await connection.models.Customer.update(customer, {where: {customerId: customerId}});
-            connection.close();
+            await connection.close();
             return customer;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }    
     }
@@ -134,24 +135,24 @@ export class CustomersService {
             let foundCart = await connection.models.ShoppingCart.findByPk(cart.cartId);
 
             if (foundCart !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Cart with ID ${cart.cartId} already exists!`);
             }
 
             let foundCustomer = await connection.models.Customer.findByPk(cart.customerId);
 
             if (foundCustomer == null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Customer with ID ${cart.customerId} does not exist!`);
             }
 
             let created = await connection.models.ShoppingCart.create(cart as any);
             let createdConverted = created.dataValues as ShoppingCart;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -163,7 +164,7 @@ export class CustomersService {
             let foundAddressByPk = await connection.models.Address.findByPk(address.addressId);
 
             if (foundAddressByPk !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with ID ${address.addressId} already exists!`);
             }
 
@@ -171,17 +172,17 @@ export class CustomersService {
             let foundAddress = await connection.models.Address.findOne({where: whereClause});
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with the given data already exists!`);
             }
 
             let created = await connection.models.Address.create(address as any);
             let createdConverted = created.dataValues as Address;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -193,7 +194,7 @@ export class CustomersService {
             let foundAddress = await connection.models.Address.findByPk(address.addressId);
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Address with ID ${address.addressId} already exists!`);
             }
 
@@ -201,6 +202,7 @@ export class CustomersService {
             let existingAddress = await connection.models.Address.findOne({where: whereClause});
 
             if (existingAddress !== null){
+                await connection.close();
                 let createdReference = await this.createNewCustomerAddressReference(existingAddress.dataValues as Address, customer);
                 return existingAddress.dataValues as Address;
             }
@@ -208,11 +210,11 @@ export class CustomersService {
             let newAddress = await this.createNewAddress(address);
             let createdReference = await this.createNewCustomerAddressReference(newAddress, customer);
             let createdConverted  = newAddress;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -225,7 +227,7 @@ export class CustomersService {
             let foundAddress = await connection.models.CustomerToAddress.findOne({where: whereClause});
 
             if (foundAddress !== null){
-                connection.close();
+                await connection.close();
                 throw new Error(`Customer address reference with address ID ${address.addressId} and customer ID ${customer.customerId} already exists!`);
             }
 
@@ -234,11 +236,11 @@ export class CustomersService {
             let customerToAddress = {customerToAddressId: newId, addressId: address.addressId, customerId: customer.customerId} as CustomerToAddress;
             let created = await connection.models.CustomerToAddress.create(customerToAddress as any);
             let createdConverted = created.dataValues as CustomerToAddress;
-            connection.close();
+            await connection.close();
             return createdConverted;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -273,44 +275,44 @@ export class CustomersService {
             let foundCustomerResult = await foundCustomerReference;
 
             if (foundCustomerResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundVendorResult = await foundVendorReference;
 
             if (foundVendorResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundSupplierResult = await foundSupplierReference;
 
             if (foundSupplierResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundDeliveryResult = await foundDeliveryReference;
 
             if (foundDeliveryResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             let foundOrderResult = await foundOrderReference;
 
             if (foundOrderResult !== null){
-                connection.close();
+                await connection.close();
                 return addressToReturn;
             }
 
             await connection.models.Address.destroy({where: {addressId: address.addressId}});
-            connection.close();
+            await connection.close();
             return addressToReturn;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -342,44 +344,44 @@ export class CustomersService {
             let foundCustomerResult = await foundCustomerReference;
 
             if (foundCustomerResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundVendorResult = await foundVendorReference;
 
             if (foundVendorResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundSupplierResult = await foundSupplierReference;
 
             if (foundSupplierResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundDeliveryResult = await foundDeliveryReference;
 
             if (foundDeliveryResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             let foundOrderResult = await foundOrderReference;
 
             if (foundOrderResult !== null){
-                connection.close();
+                await connection.close();
                 return;
             }
 
             await connection.models.Address.destroy({where: {addressId: addressId}});
-            connection.close();
+            await connection.close();
             return;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -391,6 +393,7 @@ export class CustomersService {
             let vendorToProductData = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProductData == null){
+                await connection.close();
                 throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
             }
 
@@ -411,7 +414,7 @@ export class CustomersService {
             return result;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -423,6 +426,7 @@ export class CustomersService {
             let vendorToProductData = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProductData == null){
+                await connection.close();
                 throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
             }
 
@@ -444,11 +448,11 @@ export class CustomersService {
                 phoneNumber: vendorDataConverted.phoneNumber,
                 vendorAddresses: addressesConverted
             } as VendorInformation;
-            connection.close();
+            await connection.close();
             return result;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -460,6 +464,7 @@ export class CustomersService {
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
+                await connection.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
@@ -467,6 +472,7 @@ export class CustomersService {
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProduct == null){
+                await connection.close();
                 throw new Error(`No vendor product under the given ID ${vendorToProductId} exists!`);
             }
 
@@ -476,6 +482,7 @@ export class CustomersService {
 
             if (productToCart == null){
                 if (amount > vendorProductConverted.inventoryLevel){
+                    await connection.close();
                     throw new Error(`Invalid amount ${amount} selected (surpasses inventory level of vendor's product with ID ${vendorToProductId}!`);
                 }
 
@@ -486,16 +493,17 @@ export class CustomersService {
                 let productToCartConverted = productToCart.dataValues as ProductToCart;
 
                 if ((amount + productToCartConverted.amount ) > vendorProductConverted.inventoryLevel){
+                    await connection.close();
                     throw new Error(`Invalid amount ${amount} selected (surpasses inventory level of vendor's product with ID ${vendorToProductId}!`);
                 }
 
                 await connection.models.ProductToCart.update({amount: amount + productToCartConverted.amount}, {where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
             }
 
-            connection.close();
+            await connection.close();
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -507,6 +515,7 @@ export class CustomersService {
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
+                await connection.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
@@ -514,6 +523,7 @@ export class CustomersService {
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProduct == null){
+                await connection.close();
                 throw new Error(`No vendor product under the given ID ${vendorToProductId} exists!`);
             }
 
@@ -522,12 +532,14 @@ export class CustomersService {
             let productToCart = await connection.models.ProductToCart.findOne({where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
 
             if (productToCart == null){
+                await connection.close();
                 throw new Error(`No vendor's product with ID ${vendorToProductId} was located in the cart with ID ${shoppingCartId}!`);
             } 
             
             let productToCartConverted = productToCart.dataValues as ProductToCart;
 
             if (amount > productToCartConverted.amount){
+                await connection.close();
                 throw new Error(`Invalid amount ${amount} selected (surpasses shopping cart level of vendor's product with ID ${vendorToProductId}!`);
             }
 
@@ -537,10 +549,10 @@ export class CustomersService {
                 await connection.models.ProductToCart.destroy({where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}})
             }
 
-            connection.close();
+            await connection.close();
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -552,6 +564,7 @@ export class CustomersService {
             let supplierData = await connection.models.Supplier.findOne({where: {supplierId: supplierId}});
 
             if (supplierData == null){
+                await connection.close();
                 throw new Error(`Supplier with ID ${supplierId} does not exist!`);
             }
 
@@ -570,11 +583,11 @@ export class CustomersService {
                 phoneNumber: supplierDataConverted.phoneNumber,
                 supplierAddresses: addressesConverted
             } as SupplierInformation;
-            connection.close();
+            await connection.close();
             return result;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -586,16 +599,17 @@ export class CustomersService {
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId}});
 
             if (vendorToProduct == null){
+                await connection.close();
                 return false;
             }
 
             let vendorToProductConverted = vendorToProduct.dataValues as VendorToProduct;
 
-            connection.close();
+            await connection.close();
             return (!(amount > vendorToProductConverted.inventoryLevel));
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -608,6 +622,7 @@ export class CustomersService {
             let address = await connection.models.Address.findOne({where: {addressId: billingAddressId}});
 
             if (address == null){
+                await connection.close();
                 throw new Error(`No address under the given ID ${billingAddressId} exists!`);
             }
 
@@ -615,6 +630,7 @@ export class CustomersService {
             let supplier = await connection.models.Supplier.findOne({where: {supplierId: supplierCompanyId}});
 
             if (supplier == null){
+                await connection.close();
                 throw new Error(`No supplier under the given ID ${supplierCompanyId} exists!`);
             }
 
@@ -622,6 +638,7 @@ export class CustomersService {
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
+                await connection.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
@@ -631,6 +648,7 @@ export class CustomersService {
             let productToCarts = await connection.models.ProductToCart.findAll({where: {cartId: shoppingCartId}});
 
             if (productToCarts.length == 0){
+                await connection.close();
                 throw new Error(`No products were located in the cart with ID ${shoppingCartId}!`);
             } 
 
@@ -640,8 +658,6 @@ export class CustomersService {
                 } as ProductToCart;
                 return r;
             });
-
-            console.log(productToCartsConverted);
 
             // Check if items are available
             for (let item of productToCartsConverted){
@@ -664,11 +680,11 @@ export class CustomersService {
                 await this.placeItem(order, item, supplierCompanyId);
             }
 
-            connection.close();
+            await connection.close();
             return order;
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }
@@ -681,6 +697,7 @@ export class CustomersService {
             let orderInDB = await connection.models.CustomerOrder.findOne({where: {orderId: order.orderId}});
 
             if (orderInDB == null){
+                await connection.close();
                 throw new Error(`Order with ID ${order.orderId} does not exist!`);
             }
 
@@ -688,6 +705,7 @@ export class CustomersService {
             let address = await connection.models.Address.findOne({where: {addressId: order.billingAddressId}});
 
             if (address == null){
+                await connection.close();
                 throw new Error(`No address under the given ID ${order.billingAddressId} exists!`);
             }
 
@@ -695,6 +713,7 @@ export class CustomersService {
             let supplier = await connection.models.Supplier.findOne({where: {supplierId: supplierCompanyId}});
 
             if (supplier == null){
+                await connection.close();
                 throw new Error(`No supplier under the given ID ${supplierCompanyId} exists!`);
             }
 
@@ -722,14 +741,15 @@ export class CustomersService {
             let isAvailable = await this.isItemAvailable(orderItem.vendorToProductId, orderItem.amount);
 
             if (!isAvailable){
+                await connection.close();
                 throw new Error(`The amount ${orderItem.amount} exceeeds the inventory level of vendor's product with ID ${productConverted.vendorToProductId}!`);
             }
 
             await connection.models.VendorToProduct.update({inventoryLevel: productConverted.inventoryLevel - orderItem.amount}, {where: {vendorToProductId: orderItem.vendorToProductId}});
-            connection.close();
+            await connection.close();
         }
         catch (err){
-            connection.close();
+            await connection.close();
             throw err;
         }  
     }

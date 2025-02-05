@@ -15,6 +15,9 @@ import { RemoveSupplierAddressRequestBody } from '../models/request.bodies/admin
 import { CreateCategoryRequestBody } from '../models/request.bodies/admin.request.bodies/create.category.request.body';
 import { Category } from '../models/category.model';
 import { UpdateCategoryRequestBody } from '../models/request.bodies/admin.request.bodies/update.category.request.body';
+import { AddRecommendationRequestBody } from '../models/request.bodies/admin.request.bodies/add.recommendation.request.body';
+import { ProductRecommendation } from '../models/product.recommendation.model';
+import { UpdateRecommendationRequestBody } from '../models/request.bodies/admin.request.bodies/update.recommendation.request.body';
 
 
 @controller("/admin")
@@ -135,10 +138,10 @@ export class AdminController implements interfaces.Controller{
                 return;
             }
 
-            // Find similar customer
+            // Find similar supplier
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {name: updateRequestBody.name, supplierId: {[Op.ne]: updateRequestBody.supplierId}}});
-            connection.close();
+            await connection.close();
 
             if (foundSupplier !== null){
                 response.status(400).json({message: `The given name ${updateRequestBody.name} already exists!`});
@@ -182,7 +185,7 @@ export class AdminController implements interfaces.Controller{
 
             if (existingOrderPosition !== null){
                 response.status(400).json({message: `Supplier cannot be removed as it is referenced by an order position!`});
-                connection.close();
+                await connection.close();
                 return;
             }
 
@@ -196,7 +199,7 @@ export class AdminController implements interfaces.Controller{
 
             // Delete the supplier
             await connection.models.Supplier.destroy({where: {supplierId: supplierId}});
-            connection.close();
+            await connection.close();
             response.status(200).json({message: `The supplier with ID ${supplierId} was successfully deleted!`});
         }
         catch (err){
@@ -241,7 +244,7 @@ export class AdminController implements interfaces.Controller{
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {supplierId: addAddressRequestBody.supplierId}});
             let supplierConverted = foundSupplier.dataValues as Supplier;
-            connection.close();
+            await connection.close();
 
             // Save address data
             let addressId = await this.adminService.getNewId("Address", "AddressId");
@@ -281,7 +284,7 @@ export class AdminController implements interfaces.Controller{
      *  }
      */
     @httpPut("/supplier/address/update/:aid")
-    public async updateCustomerAddress(request: Request, response: Response): Promise<void>{
+    public async updateSupplierAddress(request: Request, response: Response): Promise<void>{
         try{
             let updateAddressRequestBody: UpdateSupplierAddressRequestBody = request.body as UpdateSupplierAddressRequestBody;
             
@@ -306,7 +309,7 @@ export class AdminController implements interfaces.Controller{
             let connection = await this.adminService.intializeMSSQL();
             let foundSupplier = await connection.models.Supplier.findOne({where: {supplierId: updateAddressRequestBody.supplierId}});
             let supplierConverted = foundSupplier.dataValues as Supplier;
-            connection.close();
+            await connection.close();
             
             let addressData = {addressId: updateAddressRequestBody.addressId, 
                 street: updateAddressRequestBody.street, city: updateAddressRequestBody.city,
@@ -464,7 +467,131 @@ export class AdminController implements interfaces.Controller{
             }
 
             await this.adminService.deleteCategory(categoryId);
-            response.status(201).json({message: `The category with ID ${categoryId} was successfully deleted!`});
+            response.status(200).json({message: `The category with ID ${categoryId} was successfully deleted!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Creates a new recommendation.
+     * @param request The request body. Format:
+     * {
+     *    adminId: number,
+     *    customerId: number,
+     *    vendorToProductId: number,
+     *    purchaseProbability: float
+     * }
+     * @param response The response. Format
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPost("/recommendation/addrecommendation")
+    public async addRecommendation(request: Request, response: Response): Promise<void>{
+        try{
+            let createRecommendationRequestBody: AddRecommendationRequestBody = request.body as AddRecommendationRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateAddRecommendationRequestBody(createRecommendationRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            if (createRecommendationRequestBody.adminId !== Number(process.env.ADMIN_ID)){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let id = await this.adminService.getNewIdMongoDB("ProductRecommendation", "recommendationId");
+            let recommendation = {recommendationId: id, customerId: createRecommendationRequestBody.customerId,
+                vendorToProductId: createRecommendationRequestBody.vendorToProductId,
+                purchaseProbability: createRecommendationRequestBody.purchaseProbability,
+                recommendationDate: new Date()
+            } as ProductRecommendation;
+            let recommendationResult = await this.adminService.createProductRecommendation(recommendation);
+            response.status(201).json({message: `The recommendation with ID ${id} was successfully created!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Updates an existing recommendation.
+     * @param request The request body. Format:
+     * {
+     *    adminId: number,
+     *    recommendationId: number,
+     *    customerId: number,
+     *    vendorToProductId: number,
+     *    purchaseProbability: float
+     * }
+     * @param response The response. Format
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPut("/recommendation/update/:rid")
+    public async updateRecommendation(request: Request, response: Response): Promise<void>{
+        try{
+            let updateRecommendationRequestBody: UpdateRecommendationRequestBody = request.body as UpdateRecommendationRequestBody;
+            let rid = Number(request.params.rid);
+            
+            try{
+                this.requestBodyValidationService.validateUpdateRecommendationRequestBody(updateRecommendationRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            if (updateRecommendationRequestBody.adminId !== Number(process.env.ADMIN_ID)){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            if (rid !== updateRecommendationRequestBody.recommendationId){
+                response.status(400).json({message: "Recommendation IDs in request parameters and body have to match!"});
+                return;
+            }
+
+            let recommendation = {recommendationId: updateRecommendationRequestBody.recommendationId, 
+                customerId: updateRecommendationRequestBody.customerId,
+                vendorToProductId: updateRecommendationRequestBody.vendorToProductId,
+                purchaseProbability: updateRecommendationRequestBody.purchaseProbability,
+                recommendationDate: new Date()
+            } as ProductRecommendation;
+            let recommendationResult = await this.adminService.updateProductRecommendation(rid, recommendation);
+            response.status(201).json({message: `The recommendation with ID ${rid} was successfully updated!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Updates an existing recommendation.
+     * @param request The request body. 
+     * @param response The response. Format
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpDelete("/recommendation/:adminId/:rid")
+    public async deleteRecommendation(request: Request, response: Response): Promise<void>{
+        try{
+            let rid = Number(request.params.rid);
+            let adminId = Number(request.params.adminId);
+
+            if (adminId !== Number(process.env.ADMIN_ID)){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            await this.adminService.deleteProductRecommendation(rid);
+            response.status(200).json({message: `The recommendation with ID ${rid} was successfully deleted!`});
         }
         catch (err){
             response.status(500).json({message: err.message});

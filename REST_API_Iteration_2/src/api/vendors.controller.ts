@@ -139,7 +139,7 @@ export class VendorsController implements interfaces.Controller{
             let connection = await this.vendorsService.intializeMSSQL();
             let foundUser = await connection.models.Vendor.findOne({where: {userName: loginRequestBody.userName}});
             let userConverted = foundUser.dataValues as Vendor;
-            connection.close();
+            await connection.close();
 
             // Check the password
             if (!this.hashingService.isValid(loginRequestBody.password, userConverted.password)){
@@ -198,7 +198,7 @@ export class VendorsController implements interfaces.Controller{
             // Find similar vendor
             let connection = await this.vendorsService.intializeMSSQL();
             let foundUser = await connection.models.Vendor.findOne({where: {userName: updateRequestBody.userName, vendorId: {[Op.ne]: updateRequestBody.vendorId}}});
-            connection.close();
+            await connection.close();
 
             if (foundUser !== null){
                 response.status(400).json({message: `The given username ${updateRequestBody.userName} already exists!`});
@@ -260,7 +260,7 @@ export class VendorsController implements interfaces.Controller{
                                                 "left outer join Address a " +
                                                 "on va.AddressId = a.AddressId " +
                                                 `where v.VendorId = ${request.params.vid}`);
-            connection.close();
+            await connection.close();
             let addresses: Address[] = data[0].map(function(information){
                 let a = {addressId: information["AddressId"], street: information["Street"], 
                     city: information["City"], postalCode: information["PostalCode"], 
@@ -307,7 +307,7 @@ export class VendorsController implements interfaces.Controller{
             let idValues = ids.map(function(v){
                 return Number(v.dataValues["vendorToProductId"]);
             });
-            connection.close();
+            await connection.close();
             await this.vendorsService.removeVedorToProducts(idValues);
 
             // Delete all addresses 
@@ -317,7 +317,7 @@ export class VendorsController implements interfaces.Controller{
             // Delete the final account
              connection = await this.vendorsService.intializeMSSQL();
              await connection.models.Vendor.destroy({where: {vendorId: vendorId}});
-             connection.close();
+             await connection.close();
              response.status(200).json({message: `Vendor with ID ${vendorId} was successfully deleted!`});
         }
         catch (err){
@@ -363,7 +363,7 @@ export class VendorsController implements interfaces.Controller{
             let connection = await this.vendorsService.intializeMSSQL();
             let foundUser = await connection.models.Vendor.findOne({where: {vendorId: addAddressRequestBody.vendorId}});
             let userConverted = foundUser.dataValues as Vendor;
-            connection.close();
+            await connection.close();
 
             // Save address data
             let addressId = await this.vendorsService.getNewId("Address", "AddressId");
@@ -429,7 +429,7 @@ export class VendorsController implements interfaces.Controller{
             let connection = await this.vendorsService.intializeMSSQL();
             let foundUser = await connection.models.Vendor.findOne({where: {vendorId: updateAddressRequestBody.vendorId}});
             let userConverted = foundUser.dataValues as Vendor;
-            connection.close();
+            await connection.close();
             
             let addressData = {addressId: updateAddressRequestBody.addressId, 
                 street: updateAddressRequestBody.street, city: updateAddressRequestBody.city,
@@ -558,7 +558,7 @@ export class VendorsController implements interfaces.Controller{
 
                 if (data.length != createVendorProductRequestBody.categories.length){
                     response.status(400).json({message: "Non existing categories detected!"});
-                    connection.close();
+                    await connection.close();
                     return;
                 }
 
@@ -566,7 +566,7 @@ export class VendorsController implements interfaces.Controller{
                     return {categoryId: c.dataValues["categoryId"], name: c.dataValues["name"]} as Category;
                 });
 
-                connection.close();
+                await connection.close();
             }
 
             // Generate new product ID
@@ -726,7 +726,7 @@ export class VendorsController implements interfaces.Controller{
                 return;
             }
             
-            connection.close();
+            await connection.close();
             await this.vendorsService.removeVendorProduct(vendorToProductId);
             response.status(200).json({message: `The vendor's product with ID ${vendorToProductId} was successfully deleted!`});
         }
@@ -778,7 +778,7 @@ export class VendorsController implements interfaces.Controller{
 
             // Check if the category exists
             let categoryFound = await connection.models.Category.findOne({where: {categoryId: addCategoryRequestBody.categoryId}});
-            connection.close();
+            await connection.close();
 
             if (categoryFound == null){
                 response.status(400).json({message: `Category with ID ${addCategoryRequestBody.categoryId} does not exist!`});
@@ -853,7 +853,7 @@ export class VendorsController implements interfaces.Controller{
             }
 
             await connection.models.ProductToCategory.destroy({where: {categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId}});
-            connection.close();
+            await connection.close();
             response.status(201).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!`});
         }        
         catch (err){

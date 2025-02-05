@@ -29,6 +29,8 @@ import { UpdateSupplierAddressRequestBody } from '../../models/request.bodies/ad
 import { RemoveSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/remove.supplier.address.request.body';
 import { CreateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/create.category.request.body';
 import { UpdateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/update.category.request.body';
+import { AddRecommendationRequestBody } from '../../models/request.bodies/admin.request.bodies/add.recommendation.request.body';
+import { UpdateRecommendationRequestBody } from '../../models/request.bodies/admin.request.bodies/update.recommendation.request.body';
 
 /**
  * The customers service.
@@ -616,6 +618,54 @@ export class RequestBodyValidationService {
 
         if (body.name === undefined || body.name === null || body.name.length === 0){
             throw new Error("Property name cannot be empty!");
+        }
+    }
+
+    public validateAddRecommendationRequestBody(body: AddRecommendationRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.purchaseProbability === undefined || body.purchaseProbability === null){
+            throw new Error("Property purchaseProbability cannot be empty!");
+        }
+
+        if (!(body.purchaseProbability >= 0 && body.purchaseProbability <= 1)){
+            throw new Error("Property purchaseProbability must be between 0 and 1!");
+        }
+    }
+
+    public validateUpdateRecommendationRequestBody(body: UpdateRecommendationRequestBody){
+        if (body.adminId === undefined || body.adminId === null){
+            throw new Error("Property adminId cannot be empty!");
+        }
+
+        if (body.recommendationId === undefined || body.recommendationId === null){
+            throw new Error("Property recommendationId cannot be empty!");
+        }
+
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.purchaseProbability === undefined || body.purchaseProbability === null){
+            throw new Error("Property purchaseProbability cannot be empty!");
+        }
+
+        if (!(body.purchaseProbability >= 0 && body.purchaseProbability <= 1)){
+            throw new Error("Property purchaseProbability must be between 0 and 1!");
         }
     }
 }
