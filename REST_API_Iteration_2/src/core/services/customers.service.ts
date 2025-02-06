@@ -17,6 +17,17 @@ import { Supplier } from '../../models/supplier.model';
 import { CustomerOrder } from '../../models/customer.order.model';
 import sequelize = require('sequelize');
 import { OrderPosition } from '../../models/order.position.model';
+import neo4j, { Driver, Node, Relationship } from 'neo4j-driver';
+import * as mongoose from "mongoose";
+import {VendorToProduct as VendorToProductNeo4j} from '../../models/neo4j.models/vendor.to.product.neo4j.model';
+import {ShoppingCart as ShoppingCartNeo4j} from '../../models/neo4j.models/shopping.cart.neo4j.model';
+import { IReview } from '../../models/mongodb.models/mongodb.interfaces/review.mongodb.interface';
+import {IS_IN} from '../../models/neo4j.models/is.in.neo4j.model'
+import reviewSchema from '../../models/mongodb.models/mongodb.schemas/review.mongodb.schema';
+import { IProductRecommendation } from '../../models/mongodb.models/mongodb.interfaces/product.recommendation.mongodb.interface';
+import recommendationSchema from '../../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
+import { ICustomerAction } from '../../models/mongodb.models/mongodb.interfaces/customer.action.mongodb.interface';
+import customerActionSchema from '../../models/mongodb.models/mongodb.schemas/customer.action.mongodb.schema';
 
 /**
  * The customers service.
@@ -130,29 +141,56 @@ export class CustomersService {
 
     public async createNewShoppingCart(cart: ShoppingCart): Promise<ShoppingCart>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
+            // Check if the cart exists in MSSQL
             let foundCart = await connection.models.ShoppingCart.findByPk(cart.cartId);
 
             if (foundCart !== null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Cart with ID ${cart.cartId} already exists!`);
             }
 
+            // Check if the cart exists in Neo4j
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (c:ShoppingCart{CartId: $cartId}) RETURN c"
+            , {cartId: cart.cartId}));
+
+            if (foundReferenceResponse.records.length > 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Cart with ID ${cart.cartId} already exists!`);
+            }
+
+            // Check if customer exists
             let foundCustomer = await connection.models.Customer.findByPk(cart.customerId);
 
             if (foundCustomer == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Customer with ID ${cart.customerId} does not exist!`);
             }
 
+            // Create the cart in MSSQL
             let created = await connection.models.ShoppingCart.create(cart as any);
             let createdConverted = created.dataValues as ShoppingCart;
+
+            // Create replicate in Neo4j
+            let dateConverted = neo4j.types.DateTime.fromStandardDate(cart.dateCreated); 
+            await session.executeWrite(tx => tx.run(
+                "CREATE (c:ShoppingCart{CartId: TOINTEGER($cartId), CustomerId: TOINTEGER($customerId), DateCreated: $dateCreated}) "
+            , {cartId: cart.cartId, customerId: cart.customerId, dateCreated: dateConverted}));
+
             await connection.close();
+            await session.close();
             return createdConverted;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
@@ -351,8 +389,8 @@ export class CustomersService {
             let foundVendorResult = await foundVendorReference;
 
             if (foundVendorResult !== null){
-                connection.close();
                 await connection.close();
+                return;
             }
 
             let foundSupplierResult = await foundSupplierReference;
@@ -459,51 +497,87 @@ export class CustomersService {
 
     public async addProductToCart(vendorToProductId: number, shoppingCartId: number, amount: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+
 
         try{
+            // Check if cart exists in MSSQL
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
-            let cartConverted = cart.dataValues as ShoppingCart;
+            // Check if the cart exists in Neo4j
+            let response = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (c:ShoppingCart{CartId: $cartId}) return c"
+            , {cartId: shoppingCartId}));
+
+            if (response.records.length == 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Cart with ID ${shoppingCartId} does not exist!`);
+            }
+
+            // Check if vendor's product exists in MSSQL
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProduct == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No vendor product under the given ID ${vendorToProductId} exists!`);
             }
 
-            let vendorProductConverted = vendorToProduct.dataValues as VendorToProduct;
-            
-            let productToCart = await connection.models.ProductToCart.findOne({where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
+            // Check if vendor's product exists in Neo4j
+            let responseVendorProduct = await session.executeRead(tx => tx.run<VendorToProductNeo4j>(
+                "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) return v"
+            , {vendorToProductId: vendorToProductId}));
 
-            if (productToCart == null){
+            if (responseVendorProduct.records.length == 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
+            }
+
+            let vendorProductConverted = vendorToProduct.dataValues as VendorToProduct;
+
+            // Check if the product is already present
+            let productInCardResponse = await session.executeRead(tx => tx.run(
+                "MATCH (c:ShoppingCart{CartId: $cartId})<-[r:IS_IN]-(v:VendorToProduct{VendorToProductId:$vendorToProductId}) return r"
+            , {cartId: shoppingCartId, vendorToProductId: vendorToProductId}));
+
+
+            if (productInCardResponse.records.length == 0){
                 if (amount > vendorProductConverted.inventoryLevel){
                     await connection.close();
+                    await session.close();
                     throw new Error(`Invalid amount ${amount} selected (surpasses inventory level of vendor's product with ID ${vendorToProductId}!`);
                 }
 
-                let productToCartId = await this.getNewId("ProductToCart", "ProductToCartId");
-                let productToCart = {productToCartId: productToCartId, vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amount} as ProductToCart;
-                await connection.models.ProductToCart.create(productToCart as any);
+                let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}), (s:ShoppingCart{CartId: $cartId}) CREATE (v)-[r:IS_IN{Amount: TOINTEGER($amount)}]->(s)";
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amount}));
             } else{
-                let productToCartConverted = productToCart.dataValues as ProductToCart;
-
-                if ((amount + productToCartConverted.amount ) > vendorProductConverted.inventoryLevel){
+                let cartRelationship = productInCardResponse.records[0].get("r") as IS_IN;
+                let amountConverted = Number(amount) + Number(cartRelationship.properties.Amount);
+                if (amountConverted > vendorProductConverted.inventoryLevel){
                     await connection.close();
+                    await session.close();
                     throw new Error(`Invalid amount ${amount} selected (surpasses inventory level of vendor's product with ID ${vendorToProductId}!`);
                 }
 
-                await connection.models.ProductToCart.update({amount: amount + productToCartConverted.amount}, {where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
+                let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]-> (s:ShoppingCart{CartId: $cartId}) SET r.Amount = TOINTEGER($amount)";
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amountConverted}))
             }
 
             await connection.close();
+            await session.close();
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
@@ -756,6 +830,166 @@ export class CustomersService {
         }  
     }
 
+    public async deleteShoppingCartReferences(customerId: number): Promise<void>{
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+
+        try{
+            await session.executeWrite(tx => tx.run("MATCH (v:VendorToProduct)-[r:IS_IN]->(c:ShoppingCart{CustomerId: $customerId}) DELETE r", {customerId: customerId}));
+            await session.close();
+        }
+        catch (err){
+            await session.close();
+            throw err;
+        }  
+    }
+
+    public async deleteShoppingCarts(customerId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+
+        try{
+            let ids = await connection.models.ShoppingCart.findAll({attributes: ["cartId"],where: {customerId: customerId}});
+            let idValues = ids.map(function(v){
+                return Number(v.dataValues["cartId"]);
+            });
+
+            for (let cartId of idValues){
+                await this.deleteShoppingCart(cartId);
+            }
+        }
+        catch (err){
+            await connection.close();
+            throw err;
+        } 
+    }
+
+    public async deleteShoppingCart(cartId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+
+        try{
+            // Check if the cart is referenced
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<VendorToProductNeo4j>(
+                "MATCH (v:VendorToProduct)-[r:IS_IN]->(c:ShoppingCart{CartId: $cartId}) RETURN v"
+            , {cartId: cartId}));
+
+            if (foundReferenceResponse.records.length > 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Cart with ID ${cartId} is referenced and cannot be deleted!`);
+            }
+
+            // Delete the cart
+            await connection.models.ShoppingCart.destroy({where: {cartId: cartId}});
+            await session.executeWrite(tx => tx.run("MATCH (c:ShoppingCart{CartId: $cartId}) DELETE c", {cartId: cartId}));
+            await connection.close();
+            await session.close();
+        }
+        catch (err){
+            await connection.close();
+            await session.close();
+            throw err;
+        } 
+    }
+
+    public async deleteCustomer(customerId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Check if the customer is referenced in Neo4j
+            // Shopping cart replicate
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (s:ShoppingCart{CustomerId: $customerId}) RETURN s"
+            , {customerId: customerId}));
+
+            if (foundReferenceResponse.records.length > 0){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${customerId} is referenced and cannot be deleted!`);
+            }
+
+            // Check if the customer is referenced in MongoDB
+            // Review
+            let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+            let foundReview = await Review.findOne({'customerId': customerId});
+
+            if (foundReview != null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${customerId} is referenced and cannot be deleted!`);
+            }
+
+            // ProductRecommendation
+            let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+            let foundRecommendation = await ProductRecommendation.findOne({'customerId': customerId});
+
+            if (foundRecommendation != null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${customerId} is referenced and cannot be deleted!`);
+            }
+
+            // CustomerAction
+            let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
+            let foundAction = await CustomerAction.findOne({'customerId': customerId});
+            console.log(foundAction)
+
+            if (foundAction != null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${customerId} is referenced and cannot be deleted!`);
+            }
+
+
+            await connection.models.Customer.destroy({where: {customerId: customerId}});
+            await connection.close();
+            await session.close();
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await connection.close();
+            await session.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Remove the data
+            await mongooseModel.findOneAndDelete({[attributeName]: attributeValue});
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async deleteMongoDBEntriesByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Remove the data
+            await mongooseModel.deleteMany({[attributeName]: attributeValue});
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
     public async intializeMSSQL(): Promise<Sequelize>{
         return new Promise<Sequelize>((resolve, reject) => {
             this.connectToMssql().then((sequelize) => {
@@ -768,6 +1002,20 @@ export class CustomersService {
             }).catch((err) => {
                 reject(err);
             })
+        });
+    }
+
+    public async initializeNeo4j(): Promise<Driver>{
+        return new Promise<Driver>((resolve, reject) => {
+            try{
+            let driver = neo4j.driver(
+                process.env.NEO4J_URI,
+                neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+            );
+            resolve(driver);
+            } catch (err){
+                reject(err);
+            }
         });
     }
 
@@ -1101,31 +1349,6 @@ export class CustomersService {
                 }
             );
 
-            sequelize.define("ProductToCategory",
-                {
-                    productToCategoryId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false,
-                        primaryKey: true
-
-                    },
-                    categoryId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    productId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    }
-                },
-                {
-                    tableName: "ProductToCategory",
-                    modelName: "ProductToCategory",
-                    createdAt: false,
-                    updatedAt: false
-                }
-            );
-
             sequelize.define("Vendor",
                 {
                     vendorId: {
@@ -1158,35 +1381,6 @@ export class CustomersService {
                 {
                     tableName: "Vendor",
                     modelName: "Vendor",
-                    createdAt: false,
-                    updatedAt: false
-                }
-            );
-
-            sequelize.define("ProductToCart",
-                {
-                    productToCartId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false,
-                        primaryKey: true
-
-                    },
-                    vendorToProductId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    cartId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    amount: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    }
-                },
-                {
-                    tableName: "ProductToCart",
-                    modelName: "ProductToCart",
                     createdAt: false,
                     updatedAt: false
                 }

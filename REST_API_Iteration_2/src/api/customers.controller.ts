@@ -23,6 +23,13 @@ import { AddProductToCartRequestBody } from '../models/request.bodies/customer.r
 import { RemoveProductFromCartRequestBody } from '../models/request.bodies/customer.request.bodies/remove.product.from.cart.request.body';
 import { SupplierInformation } from '../models/supplier.information.model';
 import { MakeOrderRequestBody } from '../models/request.bodies/customer.request.bodies/make.order.request.body';
+import * as mongoose from "mongoose";
+import { ICustomerAction } from '../models/mongodb.models/mongodb.interfaces/customer.action.mongodb.interface';
+import customerActionSchema from '../models/mongodb.models/mongodb.schemas/customer.action.mongodb.schema';
+import { IProductRecommendation } from '../models/mongodb.models/mongodb.interfaces/product.recommendation.mongodb.interface';
+import recommendationSchema from '../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
+import { IReview } from '../models/mongodb.models/mongodb.interfaces/review.mongodb.interface';
+import reviewSchema from '../models/mongodb.models/mongodb.schemas/review.mongodb.schema';
 
 @controller("/customer")
 @injectable()
@@ -306,15 +313,13 @@ export class CustomersController implements interfaces.Controller{
     public async deleteAccount(request: Request, response: Response): Promise<void>{
         try{
             let customerId = Number(request.params.kid);
-            //let verified = await this.customerSessionService.verifyCustomer(customerId);
+            let verified = await this.customerSessionService.verifyCustomer(customerId);
 
-            /*
+            
             if (!verified){
                 response.status(403).json({message: "Unauthorized!"});
                 return;
             }
-                */
-
 
             let connection = await this.customersService.intializeMSSQL();
             let data = await connection.query("select op.* from OrderPosition op " +
@@ -336,11 +341,10 @@ export class CustomersController implements interfaces.Controller{
             await connection.models.CustomerOrder.destroy({where: {customerId: customerId}});
 
             // Delete the shopping cart references
-            await connection.query("delete from ProductToCart where CartId in " +
-                        `(select CartId from ShoppingCart where CustomerId = ${customerId})`)
+            await this.customersService.deleteShoppingCartReferences(customerId);
 
             // Delete the shopping cart
-            await connection.models.ShoppingCart.destroy({where: {customerId: customerId}});
+            await this.customersService.deleteShoppingCarts(customerId);
 
             // Delete the addresses
             let ids = await connection.models.CustomerToAddress.findAll({attributes: ["addressId"],where: {customerId: customerId}});
@@ -350,8 +354,20 @@ export class CustomersController implements interfaces.Controller{
 
             await this.customersService.deleteCustomerAddresses(idValues, customerId);
 
+            // Delete all customer actions
+            let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
+            await this.customersService.deleteMongoDBEntriesByAttribute(CustomerAction, "customerId", customerId);
+
+            // Delete all product recommendations
+            let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+            await this.customersService.deleteMongoDBEntriesByAttribute(ProductRecommendation, "customerId", customerId);
+
+            // Delete all product reviews
+            let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+            await this.customersService.deleteMongoDBEntriesByAttribute(Review, "customerId", customerId);
+
             // Delete the customer
-            await connection.models.Customer.destroy({where: {customerId: customerId}});
+            await this.customersService.deleteCustomer(customerId);
             await connection.close();
             response.status(200).json({message: `The customer with ID ${customerId} was successfully deleted!`});
         }
@@ -648,15 +664,6 @@ export class CustomersController implements interfaces.Controller{
                 return;
             }
 
-            let connection = await this.customersService.intializeMSSQL();
-            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: addProductToCartRequestBody.customerId, cartId: addProductToCartRequestBody.shoppingCartId}});
-            await connection.close();
-
-            if (cartCustomerConnection == null){
-                response.status(400).json({message: `Invalid shopping cart with ID ${addProductToCartRequestBody.shoppingCartId} detected!`});
-                return;
-            }
-
             await this.customersService.addProductToCart(addProductToCartRequestBody.vendorToProductId, addProductToCartRequestBody.shoppingCartId, addProductToCartRequestBody.amount);
             response.status(201).json({message: `Product with vendor' product ID ${addProductToCartRequestBody.vendorToProductId} of amount ${addProductToCartRequestBody.amount} was successfully added to cart!`});
         }
@@ -771,7 +778,7 @@ export class CustomersController implements interfaces.Controller{
      *  }
      */
     @httpPost("/cart/makeorder")
-    public async  makeOrder(request: Request, response: Response): Promise<void>{
+    public async makeOrder(request: Request, response: Response): Promise<void>{
         try{
             let makeOrderRequestBody: MakeOrderRequestBody = request.body as MakeOrderRequestBody;
             

@@ -18,6 +18,9 @@ import { UpdateCategoryRequestBody } from '../models/request.bodies/admin.reques
 import { AddRecommendationRequestBody } from '../models/request.bodies/admin.request.bodies/add.recommendation.request.body';
 import { ProductRecommendation } from '../models/product.recommendation.model';
 import { UpdateRecommendationRequestBody } from '../models/request.bodies/admin.request.bodies/update.recommendation.request.body';
+import * as mongoose from "mongoose";
+import { IProductRecommendation } from '../models/mongodb.models/mongodb.interfaces/product.recommendation.mongodb.interface';
+import recommendationSchema from '../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
 
 
 @controller("/admin")
@@ -590,7 +593,8 @@ export class AdminController implements interfaces.Controller{
                 return;
             }
 
-            await this.adminService.deleteProductRecommendation(rid);
+            let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+            await this.adminService.deleteMongoDBEntryByAttribute(ProductRecommendation, "recommendationId", rid);
             response.status(200).json({message: `The recommendation with ID ${rid} was successfully deleted!`});
         }
         catch (err){

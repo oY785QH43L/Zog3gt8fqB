@@ -514,26 +514,6 @@ export class AdminService {
         let session = driver.session();
 
         try{
-            // Check if the category exists in MSSQL
-            let foundCategory = await connection.models.Category.findOne({where: {categoryId: categoryId}});
-
-            if (foundCategory == null){
-                await connection.close();
-                await session.close();
-                throw new Error(`Category with ID ${categoryId} does not exist!`);
-            }
-
-            // Check if the category exists in Neo4j
-            let response = await session.executeRead(tx => tx.run<CategoryNeo4j>(
-                "MATCH (c:Category{CategoryId: $categoryId}) return c"
-            , {categoryId: categoryId}));
-
-            if (response.records.length == 0){
-                await connection.close();
-                await session.close();
-                throw new Error(`Category with ID ${categoryId} does not exist!`);
-            }
-
             // Check if the category is referenced
             let foundReferenceResponse = await session.executeRead(tx => tx.run<ProductNeo4j>(
                 "MATCH (p:Product)-[h:HAS_CATEGORY]->(c:Category{CategoryId: $categoryId}) RETURN p"
@@ -542,7 +522,7 @@ export class AdminService {
             if (foundReferenceResponse.records.length > 0){
                 await connection.close();
                 await session.close();
-                throw new Error(`Category with name ID ${categoryId} is referenced and cannot be deleted!`);
+                throw new Error(`Category with ID ${categoryId} is referenced and cannot be deleted!`);
             }
 
             // Delete the category
@@ -668,28 +648,15 @@ export class AdminService {
         } 
     }
 
-    public async deleteProductRecommendation(recommendationId: number): Promise<void>{
-        let connection: Sequelize = await this.intializeMSSQL();
+    public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
         await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
-        let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
 
         try{
-            // Check if the ID exists
-            let foundRecommendation = await ProductRecommendation.findOne({'recommendationId': recommendationId});
-
-            if (foundRecommendation == null){
-                await connection.close();
-                await mongoose.disconnect();
-                throw new Error(`Product recommendation with ID ${recommendationId} does not exist!`);
-            }
-
             // Remove the data
-            await ProductRecommendation.findOneAndDelete({recommendationId: recommendationId});
-            await connection.close();
+            await mongooseModel.findOneAndDelete({[attributeName]: attributeValue});
             await mongoose.disconnect();
         }
         catch (err){
-            await connection.close();
             await mongoose.disconnect();
             throw err;
         } 
@@ -718,18 +685,6 @@ export class AdminService {
                 neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
             );
             resolve(driver);
-            } catch (err){
-                reject(err);
-            }
-        });
-    }
-
-    public async initializeMongoBD(): Promise<MongoClient>{
-        return new Promise<MongoClient>((resolve, reject) => {
-            try{
-                let uri = process.env.MONGODB_URI;
-                let client = new MongoClient(uri);
-                resolve(client);
             } catch (err){
                 reject(err);
             }
