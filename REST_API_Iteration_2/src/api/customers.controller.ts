@@ -30,6 +30,10 @@ import { IProductRecommendation } from '../models/mongodb.models/mongodb.interfa
 import recommendationSchema from '../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
 import { IReview } from '../models/mongodb.models/mongodb.interfaces/review.mongodb.interface';
 import reviewSchema from '../models/mongodb.models/mongodb.schemas/review.mongodb.schema';
+import { CreateReviewRequestBody } from '../models/request.bodies/customer.request.bodies/create.review.request.body';
+import { Review } from '../models/review.model';
+import { CustomerAction } from '../models/customer.action.model';
+import { UpdateReviewRequestBody } from '../models/request.bodies/customer.request.bodies/update.review.request.body';
 
 @controller("/customer")
 @injectable()
@@ -705,15 +709,6 @@ export class CustomersController implements interfaces.Controller{
                 return;
             }
 
-            let connection = await this.customersService.intializeMSSQL();
-            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: removeProductFromCartRequestBody.customerId, cartId: removeProductFromCartRequestBody.shoppingCartId}});
-            await connection.close();
-
-            if (cartCustomerConnection == null){
-                response.status(400).json({message: `Invalid shopping cart with ID ${removeProductFromCartRequestBody.shoppingCartId} detected!`});
-                return;
-            }
-
             await this.customersService.removeProductFromCart(removeProductFromCartRequestBody.vendorToProductId, removeProductFromCartRequestBody.shoppingCartId, removeProductFromCartRequestBody.amount);
             response.status(200).json({message: `Product with vendor' product ID ${removeProductFromCartRequestBody.vendorToProductId} of amount ${removeProductFromCartRequestBody.amount} was successfully removed from cart!`});
         }
@@ -796,17 +791,222 @@ export class CustomersController implements interfaces.Controller{
                 return;
             }
 
-            let connection = await this.customersService.intializeMSSQL();
-            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: makeOrderRequestBody.customerId, cartId: makeOrderRequestBody.shoppingCartId}});
-            await connection.close();
+            let belongsToCustomer = await this.customersService.doesCartBelongToCustomer(makeOrderRequestBody.shoppingCartId, makeOrderRequestBody.customerId);
 
-            if (cartCustomerConnection == null){
+            if (!belongsToCustomer){
                 response.status(400).json({message: `Invalid shopping cart with ID ${makeOrderRequestBody.shoppingCartId} detected!`});
                 return;
             }
 
             let order = await this.customersService.makeOrder(makeOrderRequestBody.shoppingCartId, makeOrderRequestBody.billingAddressId, makeOrderRequestBody.supplierCompanyId);
             response.status(201).json({message: `Order from shopping cart ${makeOrderRequestBody.shoppingCartId} for the customer ${makeOrderRequestBody.customerId} was successfully placed under the ID ${order.orderId}`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Creates a customer review.
+     * @param request The request body. Format:
+     * {
+     *  customerId: number;
+     *  vendorToProductId: number;
+     *  reviewText: string;
+     *  rating: number;
+     * }
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPost("/product/review/create")
+    public async createReview(request: Request, response: Response): Promise<void>{
+        try{
+            let createReviewRequestBody: CreateReviewRequestBody = request.body as CreateReviewRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateCreateReviewRequestBody(createReviewRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            let verified = await this.customerSessionService.verifyCustomer(createReviewRequestBody.customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let newReviewId = await this.customersService.getNewIdMongoDB("Review", "reviewId");
+            let newActionId = await this.customersService.getNewIdMongoDB("CustomerAction", "customerActionId");
+            let now = new Date();
+            let review = {reviewId: newReviewId, customerId: createReviewRequestBody.customerId,
+                vendorToProductId: createReviewRequestBody.vendorToProductId, reviewText: createReviewRequestBody.reviewText,
+                rating: createReviewRequestBody.rating, reviewDate: now
+            } as Review;
+            let action = {customerActionId: newActionId, customerId: createReviewRequestBody.customerId,
+                vendorToProductId: createReviewRequestBody.vendorToProductId, actionType: "view",
+                actionDate: now
+            } as CustomerAction;
+
+            await this.customersService.createReview(review);
+            await this.customersService.createCustomerAction(action);
+            response.status(201).json({message: `Review with the ID ${newReviewId} for the vendor's product ID ${createReviewRequestBody.vendorToProductId} for customer ${createReviewRequestBody.customerId} was registered!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Updates a customer review.
+     * @param request The request body. Format:
+     * {
+     *  reviewId: number,
+     *  customerId: number;
+     *  vendorToProductId: number;
+     *  reviewText: string;
+     *  rating: number;
+     * }
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpPut("/product/review/:rid")
+    public async updateReview(request: Request, response: Response): Promise<void>{
+        try{
+            let rid = Number(request.params.rid);
+            let updateReviewRequestBody: UpdateReviewRequestBody = request.body as UpdateReviewRequestBody;
+            
+            try{
+                this.requestBodyValidationService.validateUpdateReviewRequestBody(updateReviewRequestBody);
+            } catch (err){
+                response.status(400).json({message: err.message})
+                return;
+            }
+
+            let verified = await this.customerSessionService.verifyCustomer(updateReviewRequestBody.customerId);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            if (rid !== updateReviewRequestBody.reviewId){
+                response.status(400).json({message: "Recommendation IDs in request parameters and body have to match!"});
+                return;
+            }
+
+            let belongsToCustomer = await this.customersService.belongsToCustomer(rid, updateReviewRequestBody.customerId);
+
+            if (!belongsToCustomer){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let newActionId = await this.customersService.getNewIdMongoDB("CustomerAction", "customerActionId");
+            let now = new Date();
+            let review = {reviewId: updateReviewRequestBody.reviewId, customerId: updateReviewRequestBody.customerId,
+                vendorToProductId: updateReviewRequestBody.vendorToProductId, reviewText: updateReviewRequestBody.reviewText,
+                rating: updateReviewRequestBody.rating, reviewDate: now
+            } as Review;
+            let action = {customerActionId: newActionId, customerId: updateReviewRequestBody.customerId,
+                vendorToProductId: updateReviewRequestBody.vendorToProductId, actionType: "view",
+                actionDate: now
+            } as CustomerAction;
+
+            await this.customersService.updateReview(rid, review);
+            await this.customersService.createCustomerAction(action);
+            response.status(201).json({message: `Review with the ID ${rid} for the vendor's product ID ${review.vendorToProductId} for customer ${review.customerId} was updated!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Fetches reviews for a product.
+     * @param request The request body.
+     * @param response The response. Format:
+     *  {
+     *    result: [
+     *       {
+     *          reviewId: number,
+     *          customerId: number,
+     *          vendorToProductId: number,
+     *          reviewText: string,
+     *          rating: number,
+     *          reviewDate: Date
+     *       },
+     *      ...
+     *    ]
+     *  }
+     */
+    @httpGet("/product/review/:kid/:pid")
+    public async getReviews(request: Request, response: Response): Promise<void>{
+        try{
+            let kid = Number(request.params.kid);
+            let vendorToProductId = Number(request.params.pid);
+            let verified = await this.customerSessionService.verifyCustomer(kid);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let fetchedReviews = await this.customersService.getReviews(vendorToProductId);
+            response.status(200).json({result: fetchedReviews});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Deletes a review for a customer.
+     * @param request The request body.
+     * @param response The response. Format:
+     *  {
+     *    message: string
+     *  }
+     */
+    @httpDelete("/product/review/:kid/:rid")
+    public async deleteReview(request: Request, response: Response): Promise<void>{
+        try{
+            let kid = Number(request.params.kid);
+            let rid = Number(request.params.rid);
+            let verified = await this.customerSessionService.verifyCustomer(kid);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let now = new Date();
+            let belongsToCustomer = await this.customersService.belongsToCustomer(rid, kid);
+
+            if (!belongsToCustomer){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let fetchedReview = await this.customersService.getReviewByAttribute("reviewId", rid);
+
+            if (fetchedReview !== null){
+                let newActionId = await this.customersService.getNewIdMongoDB("CustomerAction", "customerActionId");
+                let action = {customerActionId: newActionId, customerId: kid,
+                    vendorToProductId: fetchedReview.vendorToProductId, actionType: "view",
+                    actionDate: now
+                } as CustomerAction;
+                await this.customersService.createCustomerAction(action);
+            }
+
+            let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+            await this.customersService.deleteMongoDBEntryByAttribute(Review, "reviewId", rid);
+            response.status(200).json({message: `Review with the ID ${rid} was deleted!`});
         }
         catch (err){
             response.status(500).json({message: err.message});

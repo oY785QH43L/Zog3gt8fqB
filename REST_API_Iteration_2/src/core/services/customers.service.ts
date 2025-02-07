@@ -28,6 +28,9 @@ import { IProductRecommendation } from '../../models/mongodb.models/mongodb.inte
 import recommendationSchema from '../../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
 import { ICustomerAction } from '../../models/mongodb.models/mongodb.interfaces/customer.action.mongodb.interface';
 import customerActionSchema from '../../models/mongodb.models/mongodb.schemas/customer.action.mongodb.schema';
+import { CustomerAction } from '../../models/customer.action.model';
+import { Review } from '../../models/review.model';
+import { VendorProductIsInCart } from '../../models/neo4j.models/product.is.in.cart.neo4j.model';
 
 /**
  * The customers service.
@@ -75,6 +78,20 @@ export class CustomersService {
             await connection.close();
             throw err;
         }
+    }
+
+    public async getNewIdMongoDB(entityName: string, attributeName: string): Promise<Number>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let doc = await mongoose.connection.db.collection(entityName).findOne({[attributeName]: {$exists: true}});
+
+        if (doc == null){
+            await mongoose.disconnect();
+            return 0;
+        }
+
+        let foundDocument = await mongoose.connection.db.collection(entityName).find().sort({[attributeName]:-1}).limit(1).next(); 
+        await mongoose.disconnect();
+        return foundDocument[attributeName] + 1;
     }
 
     public async doesUsernameExist(userName: string): Promise<boolean>{
@@ -500,7 +517,6 @@ export class CustomersService {
         let driver = await this.initializeNeo4j();
         let session = driver.session();
 
-
         try{
             // Check if cart exists in MSSQL
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
@@ -569,7 +585,7 @@ export class CustomersService {
                 }
 
                 let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]-> (s:ShoppingCart{CartId: $cartId}) SET r.Amount = TOINTEGER($amount)";
-                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amountConverted}))
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amountConverted}));
             }
 
             await connection.close();
@@ -584,50 +600,87 @@ export class CustomersService {
 
     public async removeProductFromCart(vendorToProductId: number, shoppingCartId: number, amount: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
+            // Check if cart exists in MSSQL
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
+            // Check if the cart exists in Neo4j
+            let response = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (c:ShoppingCart{CartId: $cartId}) return c"
+            , {cartId: shoppingCartId}));
+
+            if (response.records.length == 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Cart with ID ${shoppingCartId} does not exist!`);
+            }
+
             let cartConverted = cart.dataValues as ShoppingCart;
+
+            // Check if vendor's product exists in MSSQL
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProduct == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No vendor product under the given ID ${vendorToProductId} exists!`);
             }
 
-            let vendorProductConverted = vendorToProduct.dataValues as VendorToProduct;
-            
-            let productToCart = await connection.models.ProductToCart.findOne({where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
+            // Check if vendor's product exists in Neo4j
+            let responseVendorProduct = await session.executeRead(tx => tx.run<VendorToProductNeo4j>(
+                "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) return v"
+            , {vendorToProductId: vendorToProductId}));
 
-            if (productToCart == null){
+            if (responseVendorProduct.records.length == 0){
                 await connection.close();
+                await session.close();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
+            }
+
+            // Check if the product is already present
+            let productInCardResponse = await session.executeRead(tx => tx.run(
+                "MATCH (c:ShoppingCart{CartId: $cartId})<-[r:IS_IN]-(v:VendorToProduct{VendorToProductId:$vendorToProductId}) return r"
+            , {cartId: shoppingCartId, vendorToProductId: vendorToProductId}));
+
+            if (productInCardResponse.records.length == 0){
+                await connection.close();
+                await session.close();
                 throw new Error(`No vendor's product with ID ${vendorToProductId} was located in the cart with ID ${shoppingCartId}!`);
-            } 
+            }
             
-            let productToCartConverted = productToCart.dataValues as ProductToCart;
+            let cartRelationship = productInCardResponse.records[0].get("r") as IS_IN;
+            let cartAmount = Number(cartRelationship.properties.Amount);
 
-            if (amount > productToCartConverted.amount){
+            if (amount > cartAmount){
                 await connection.close();
+                await session.close();
                 throw new Error(`Invalid amount ${amount} selected (surpasses shopping cart level of vendor's product with ID ${vendorToProductId}!`);
             }
 
-            await connection.models.ProductToCart.update({amount: productToCartConverted.amount - amount}, {where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}});
+            let amountToSet = cartAmount - Number(amount);
+            let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]-> (s:ShoppingCart{CartId: $cartId}) SET r.Amount = TOINTEGER($amount)";
+            await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId, amount: amountToSet}));
 
-            if (amount == productToCartConverted.amount){
-                await connection.close();
-                await connection.models.ProductToCart.destroy({where: {vendorToProductId: vendorToProductId, cartId: shoppingCartId}})
+            if (amount == cartAmount){
+                let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]-> (s:ShoppingCart{CartId: $cartId}) DELETE r";
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, cartId: shoppingCartId}));
             }
 
             await connection.close();
+            await session.close();
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
@@ -669,28 +722,48 @@ export class CustomersService {
 
     public async isItemAvailable(vendorToProductId: number, amount: number): Promise<boolean>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
+            // Check for existence in MSSQL
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId}});
 
             if (vendorToProduct == null){
                 await connection.close();
+                await session.close();
+                return false;
+            };
+
+            // Check for existence in Neo4j
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<VendorToProductNeo4j>(
+                "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) RETURN v"
+            , {vendorToProductId: vendorToProductId}));
+
+            if (foundReferenceResponse.records.length == 0){
+                await connection.close();
+                await session.close();
                 return false;
             }
+
 
             let vendorToProductConverted = vendorToProduct.dataValues as VendorToProduct;
 
             await connection.close();
+            await session.close();
             return (!(amount > vendorToProductConverted.inventoryLevel));
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
 
     public async makeOrder(shoppingCartId: number, billingAddressId: number, supplierCompanyId: number): Promise<CustomerOrder>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             // Check if the address is valid
@@ -698,6 +771,7 @@ export class CustomersService {
 
             if (address == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No address under the given ID ${billingAddressId} exists!`);
             }
 
@@ -706,33 +780,51 @@ export class CustomersService {
 
             if (supplier == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`No supplier under the given ID ${supplierCompanyId} exists!`);
             }
 
-            // Check if the shopping cart exists
+            // Check if the shopping cart exists in MSSQL
             let cart = await connection.models.ShoppingCart.findOne({where: {cartId: shoppingCartId}});
 
             if (cart == null){
                 await connection.close();
+                await session.close();
+                throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
+            }
+
+            // Check if the shopping cart exists in Neo4j
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (c:ShoppingCart{CartId: $cartId}) RETURN c"
+            , {cartId: shoppingCartId}));
+
+            if (foundReferenceResponse.records.length == 0){
+                await connection.close();
+                await session.close();
                 throw new Error(`No cart under the given ID ${shoppingCartId} exists!`);
             }
 
             let cartConverted = cart.dataValues as ShoppingCart;
 
             // Retrieve products in cart
-            let productToCarts = await connection.models.ProductToCart.findAll({where: {cartId: shoppingCartId}});
+            let productsInCart = await session.executeRead(tx => tx.run<VendorProductIsInCart>(
+                "MATCH (s:ShoppingCart{CartId: $cartId})<-[r:IS_IN]-(v:VendorToProduct) RETURN s,v,r"
+            , {cartId: shoppingCartId}));
 
-            if (productToCarts.length == 0){
+            if (productsInCart.records.length == 0){
                 await connection.close();
+                await session.close();
                 throw new Error(`No products were located in the cart with ID ${shoppingCartId}!`);
             } 
 
-            let productToCartsConverted: ProductToCart[] = productToCarts.map(function(v){
-                let r = {productToCartId: v.dataValues["productToCartId"], vendorToProductId: v.dataValues["vendorToProductId"],
-                    cartId: v.dataValues["cartId"], amount: v.dataValues["amount"],
+            let productToCartsConverted: ProductToCart[] = productsInCart.records.map(function(v){
+                let r = {productToCartId: -1, vendorToProductId: Number(v.get("v").properties.VendorToProductId),
+                    cartId: Number(v.get("s").properties.CartId), amount: Number(v.get("r").properties.Amount)
                 } as ProductToCart;
                 return r;
             });
+
+            console.log(productToCartsConverted);
 
             // Check if items are available
             for (let item of productToCartsConverted){
@@ -740,6 +832,7 @@ export class CustomersService {
 
                 if (!available){
                     await connection.close();
+                    await session.close();
                     throw new Error(`Vendor's item with ID ${item.vendorToProductId} is not availabe in amount of ${item.amount}!`);
                 }
             }
@@ -757,16 +850,21 @@ export class CustomersService {
             }
 
             await connection.close();
+            await session.close();
             return order;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
 
     public async placeItem(order: CustomerOrder, orderItem: ProductToCart, supplierCompanyId: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             // Check if the order is valid
@@ -774,6 +872,8 @@ export class CustomersService {
 
             if (orderInDB == null){
                 await connection.close();
+                await session.close();
+                await mongoose.disconnect();
                 throw new Error(`Order with ID ${order.orderId} does not exist!`);
             }
 
@@ -782,6 +882,8 @@ export class CustomersService {
 
             if (address == null){
                 await connection.close();
+                await session.close();
+                await mongoose.disconnect();
                 throw new Error(`No address under the given ID ${order.billingAddressId} exists!`);
             }
 
@@ -790,6 +892,8 @@ export class CustomersService {
 
             if (supplier == null){
                 await connection.close();
+                await session.close();
+                await mongoose.disconnect();
                 throw new Error(`No supplier under the given ID ${supplierCompanyId} exists!`);
             }
 
@@ -809,7 +913,9 @@ export class CustomersService {
             await connection.models.OrderPosition.create(orderPosition as any);
 
             // Remove the order item from cart
-            await connection.models.ProductToCart.destroy({where: {vendorToProductId: orderItem.vendorToProductId, cartId: orderItem.cartId}});
+            let query = "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]-> (s:ShoppingCart{CartId: $cartId}) DELETE r"
+            await session.executeWrite(tx => tx.run(query
+            , {vendorToProductId: orderItem.vendorToProductId, cartId: orderItem.cartId}));
 
             // Update the inventory level
             let vendorToProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: orderItem.vendorToProductId}});
@@ -818,14 +924,30 @@ export class CustomersService {
 
             if (!isAvailable){
                 await connection.close();
+                await session.close();
+                await mongoose.disconnect();
                 throw new Error(`The amount ${orderItem.amount} exceeeds the inventory level of vendor's product with ID ${productConverted.vendorToProductId}!`);
             }
 
-            await connection.models.VendorToProduct.update({inventoryLevel: productConverted.inventoryLevel - orderItem.amount}, {where: {vendorToProductId: orderItem.vendorToProductId}});
+            let now = new Date();
+            let newActionId = await this.getNewIdMongoDB("CustomerAction", "customerActionId");
+            let action = {customerActionId: newActionId, customerId: order.customerId,
+                vendorToProductId: orderItem.vendorToProductId, actionType: "purchase",
+                actionDate: now
+            } as CustomerAction;
+            let amountToSet = Number(productConverted.inventoryLevel) - Number(orderItem.amount);
+            await connection.models.VendorToProduct.update({inventoryLevel: amountToSet}, {where: {vendorToProductId: orderItem.vendorToProductId}});
+            await session.executeWrite(tx => tx.run("MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) SET v.InventoryLevel = TOINTEGER($amount)"
+                , {vendorToProductId: orderItem.vendorToProductId, amount: amountToSet}));
+            await this.createCustomerAction(action);
             await connection.close();
+            await session.close();
+            await mongoose.disconnect();
         }
         catch (err){
             await connection.close();
+            await session.close();
+            await mongoose.disconnect();
             throw err;
         }  
     }
@@ -939,7 +1061,6 @@ export class CustomersService {
             // CustomerAction
             let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
             let foundAction = await CustomerAction.findOne({'customerId': customerId});
-            console.log(foundAction)
 
             if (foundAction != null){
                 await connection.close();
@@ -976,6 +1097,232 @@ export class CustomersService {
         } 
     }
 
+    public async createCustomerAction(customerAction: CustomerAction): Promise<CustomerAction>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
+
+        try{
+            // Check if the ID already exists
+            let foundAction = await CustomerAction.findOne({'customerActionId': customerAction.customerActionId});
+
+            if (foundAction !== null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer action with ID ${foundAction.customerActionId} already exists!`);
+            }
+
+            // Check if the customer exists
+            let foundCustomer = await connection.models.Customer.findOne({where: {customerId: customerAction.customerId}});
+
+            if (foundCustomer == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${customerAction.customerId} does not exist!`);
+            }
+
+            // Check if the product exists
+            let foundProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: customerAction.vendorToProductId}});
+
+            if (foundProduct == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${customerAction.vendorToProductId} does not exist!`);
+            }
+
+            let toInsert = new CustomerAction({
+                customerActionId: customerAction.customerActionId,
+                customerId: customerAction.customerId,
+                vendorToProductId: customerAction.vendorToProductId,
+                actionType: customerAction.actionType,
+                actionDate: customerAction.actionDate
+            });
+
+            await toInsert.save();
+            await connection.close();
+            await mongoose.disconnect();
+            return customerAction;
+        }
+        catch (err){
+            await connection.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async createReview(review: Review): Promise<Review>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+
+        try{
+            // Check if the ID already exists
+            let foundReview = await Review.findOne({'reviewId': review.reviewId});
+
+            if (foundReview !== null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Review with ID ${foundReview.reviewId} already exists!`);
+            }
+
+            // Check if the customer exists
+            let foundCustomer = await connection.models.Customer.findOne({where: {customerId: review.customerId}});
+
+            if (foundCustomer == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${review.customerId} does not exist!`);
+            }
+
+            // Check if the product exists
+            let foundProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: review.vendorToProductId}});
+
+            if (foundProduct == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${review.vendorToProductId} does not exist!`);
+            }
+
+            let toInsert = new Review({
+                reviewId: review.reviewId,
+                customerId: review.customerId,
+                vendorToProductId: review.vendorToProductId,
+                reviewText: review.reviewText,
+                rating: review.rating,
+                reviewDate: review.reviewDate
+            });
+
+            await toInsert.save();
+            await connection.close();
+            await mongoose.disconnect();
+            return review;
+        }
+        catch (err){
+            await connection.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async updateReview(reviewId: number, review: Review): Promise<Review>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+
+        try{
+            // Check if IDs match
+            if (reviewId !== review.reviewId){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`reviewId and review.reviewId do not match!`);
+            }
+
+            // Check if the ID exists
+            let foundReview = await Review.findOne({'reviewId': review.reviewId});
+
+            if (foundReview == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Review with ID ${review.reviewId} does not exist!`);
+            }
+
+            // Check if the customer exists
+            let foundCustomer = await connection.models.Customer.findOne({where: {customerId: review.customerId}});
+
+            if (foundCustomer == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Customer with ID ${review.customerId} does not exist!`);
+            }
+
+            // Check if the product exists
+            let foundProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: review.vendorToProductId}});
+
+            if (foundProduct == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${review.vendorToProductId} does not exist!`);
+            }
+
+            // Update the data
+            await Review.findOneAndUpdate({reviewId: review.reviewId},
+                {
+                   reviewText: review.reviewText, rating: review.rating
+                }
+            );
+            await connection.close();
+            await mongoose.disconnect();
+            return review;
+        }
+        catch (err){
+            await connection.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async belongsToCustomer(reviewId: number, customerId: number): Promise<boolean>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+
+        try{
+            // Check if the ID exists
+            let foundReview = await Review.findOne({'reviewId': reviewId});
+
+            if (foundReview == null){
+                return false;
+            }
+
+            await mongoose.disconnect();
+            return foundReview.customerId == customerId;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async getReviews(vendorToProductId: number): Promise<Review[]>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+
+        try{
+            let resultValues = await Review.find({"vendorToProductId": vendorToProductId});
+            let reviews: Review[] = resultValues.map(function(r){
+                let returnVal = {reviewId: r.reviewId, customerId: r.customerId, 
+                    vendorToProductId: r.vendorToProductId, reviewText: r.reviewText, 
+                    rating: r.rating, reviewDate: r.reviewDate
+                } as Review;
+                return returnVal;
+            });
+
+            await mongoose.disconnect();
+            return reviews;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async getReviewByAttribute(attributeName: string, attributeValue): Promise<Review>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+
+        try{
+            let result = await Review.findOne({[attributeName]: attributeValue});
+            let toReturn = {reviewId: result.reviewId, customerId: result.customerId,
+                vendorToProductId: result.vendorToProductId, reviewText: result.reviewText,
+                rating: result.rating, reviewDate: result.reviewDate
+            } as Review;
+            return toReturn;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
     public async deleteMongoDBEntriesByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
         await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
 
@@ -986,6 +1333,43 @@ export class CustomersService {
         }
         catch (err){
             await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async doesCartBelongToCustomer(cartId: number, customerId: number): Promise<boolean>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+
+        try{
+            // Check if exists in MSSQL
+            let cartCustomerConnection = await connection.models.ShoppingCart.findOne({where: {customerId: customerId, cartId: cartId}});
+
+            if (cartCustomerConnection == null){
+                await connection.close();
+                await session.close();
+                return false;
+            }
+
+            // Check if exists in Neo4j
+            let foundReferenceResponse = await session.executeRead(tx => tx.run<ShoppingCartNeo4j>(
+                "MATCH (c:ShoppingCart{CartId: $cartId, CustomerId: $customerId}) RETURN c"
+            , {cartId: cartId, customerId: customerId}));
+
+            if (foundReferenceResponse.records.length == 0){
+                await connection.close();
+                await session.close();
+                return false;
+            }
+
+            await connection.close();
+            await session.close();
+            return true;
+        }
+        catch (err){
+            await connection.close();
+            await session.close();
             throw err;
         } 
     }

@@ -27,6 +27,7 @@ import * as mongoose from "mongoose";
 import { MongoClient } from 'mongodb';
 import { IProductRecommendation } from '../../models/mongodb.models/mongodb.interfaces/product.recommendation.mongodb.interface';
 import recommendationSchema from '../../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
+import { Review } from '../../models/review.model';
 
 /**
  * The admin service.

@@ -31,6 +31,8 @@ import { CreateCategoryRequestBody } from '../../models/request.bodies/admin.req
 import { UpdateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/update.category.request.body';
 import { AddRecommendationRequestBody } from '../../models/request.bodies/admin.request.bodies/add.recommendation.request.body';
 import { UpdateRecommendationRequestBody } from '../../models/request.bodies/admin.request.bodies/update.recommendation.request.body';
+import { CreateReviewRequestBody } from '../../models/request.bodies/customer.request.bodies/create.review.request.body';
+import { UpdateReviewRequestBody } from '../../models/request.bodies/customer.request.bodies/update.review.request.body';
 
 /**
  * The customers service.
@@ -666,6 +668,54 @@ export class RequestBodyValidationService {
 
         if (!(body.purchaseProbability >= 0 && body.purchaseProbability <= 1)){
             throw new Error("Property purchaseProbability must be between 0 and 1!");
+        }
+    }
+
+    public validateCreateReviewRequestBody(body: CreateReviewRequestBody){
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.reviewText === undefined || body.reviewText === null || body.reviewText.length == 0){
+            throw new Error("Property reviewText cannot be empty!");
+        }
+
+        if (body.rating === undefined || body.rating === null){
+            throw new Error("Property rating cannot be empty!");
+        }
+
+        if (!(body.rating >= 1 && body.rating <= 10)){
+            throw new Error("Property rating must be between 1 and 10!");
+        }
+    }
+
+    public validateUpdateReviewRequestBody(body: UpdateReviewRequestBody){
+        if (body.reviewId === undefined || body.reviewId === null){
+            throw new Error("Property reviewId cannot be empty!");
+        }
+
+        if (body.customerId === undefined || body.customerId === null){
+            throw new Error("Property customerId cannot be empty!");
+        }
+
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+            throw new Error("Property vendorToProductId cannot be empty!");
+        }
+
+        if (body.reviewText === undefined || body.reviewText === null || body.reviewText.length == 0){
+            throw new Error("Property reviewText cannot be empty!");
+        }
+
+        if (body.rating === undefined || body.rating === null){
+            throw new Error("Property rating cannot be empty!");
+        }
+
+        if (!(body.rating >= 1 && body.rating <= 10)){
+            throw new Error("Property rating must be between 1 and 10!");
         }
     }
 }
