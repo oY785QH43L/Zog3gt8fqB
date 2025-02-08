@@ -1,4 +1,4 @@
-# REST-API for relational e commerce model (Iteration 2)
+# REST-API for polyglot e commerce model (Iteration 2)
 The application is a Node.js REST-API written in TypeScript.
 It demonstrates a simple REST-API that works with a polyglot persistence model (relational, graph and document database).
 Following libraries have to be installed using npm:
