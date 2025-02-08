@@ -292,14 +292,13 @@ export class VendorsController implements interfaces.Controller{
     @httpDelete("/account/:vid")
     public async deleteAccount(request: Request, response: Response): Promise<void>{
         try{
-                let vendorId = Number(request.params.vid)
-                let verified = await this.vendorSessionService.verifyVendor(vendorId);
+            let vendorId = Number(request.params.vid);
+            let verified = await this.vendorSessionService.verifyVendor(vendorId);
 
-                if (!verified){
-                    response.status(403).json({message: "Unauthorized!"});
-                    return;
-                }
-
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
 
             // Delete all products
             let connection = await this.vendorsService.intializeMSSQL();

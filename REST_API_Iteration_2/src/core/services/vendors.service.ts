@@ -9,7 +9,18 @@ import { Product } from '../../models/product.model';
 import { Category } from '../../models/category.model';
 import { VendorToProduct } from '../../models/vendor.to.product.model';
 import { ProductToCategory } from '../../models/product.to.category.model';
-
+import neo4j, { Driver, Node, Relationship } from 'neo4j-driver';
+import * as mongoose from "mongoose";
+import { IProductRecommendation } from '../../models/mongodb.models/mongodb.interfaces/product.recommendation.mongodb.interface';
+import recommendationSchema from '../../models/mongodb.models/mongodb.schemas/product.recommendation.mongodb.schema';
+import { IReview } from '../../models/mongodb.models/mongodb.interfaces/review.mongodb.interface';
+import reviewSchema from '../../models/mongodb.models/mongodb.schemas/review.mongodb.schema';
+import { ICustomerAction } from '../../models/mongodb.models/mongodb.interfaces/customer.action.mongodb.interface';
+import customerActionSchema from '../../models/mongodb.models/mongodb.schemas/customer.action.mongodb.schema';
+import { IProductImage } from '../../models/mongodb.models/mongodb.interfaces/product.image.mongodb.interface';
+import productImageSchema from '../../models/mongodb.models/mongodb.schemas/product.image.mongodb.schema';
+import { IProductVideo } from '../../models/mongodb.models/mongodb.interfaces/product.video.mongodb.interface';
+import productVideoSchema from '../../models/mongodb.models/mongodb.schemas/product.video.mongodb.schema';
 
 /**
  * The vendors service.
@@ -620,39 +631,272 @@ export class VendorsService {
 
     public async removeVendorProduct(vendorToProductId: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+        let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+        let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
 
         try{
             let productReference = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
-            // Remove product if it is not referenced
+            // Return if already deleted
             if (productReference == null){
                 await connection.close();
-                throw new Error(`Product with vendor's product ID ${vendorToProductId} does not exist!`);
+                await session.close();
+                await mongoose.disconnect();
+                return;
             }
 
             let referenceConverted = productReference.dataValues as VendorToProduct;
 
             // Remove items from product to cart
-            await connection.models.ProductToCart.destroy({where: {vendorToProductId: vendorToProductId}});
+            await session.executeWrite(tx => tx.run(
+                "MATCH (v:VendorToProduct{VendorToProductId:$vendorToProductId})-[r:IS_IN]->(s:ShoppingCart) DELETE r"
+            , {vendorToProductId: vendorToProductId}));
 
             // Remove items from order position
             await connection.models.OrderPosition.destroy({where: {vendorToProductId: vendorToProductId}});
 
+            // Remove the reviews
+            await Review.deleteMany({vendorToProductId: vendorToProductId});
+
+            // Remove the recommendations
+            await ProductRecommendation.deleteMany({vendorToProductId: vendorToProductId});
+
+            // Remove the customer actions
+            await CustomerAction.deleteMany({vendorToProductId: vendorToProductId});
+
+            // Remove the images
+            await this.removeProductImages(vendorToProductId);
+
+            // Remove the videos
+            await this.removeProductVideos(vendorToProductId);
+
             // Remove the product reference
-            await connection.models.VendorToProduct.destroy({where: {vendorToProductId: vendorToProductId}});
+            await this.removeVendorToProductEntry(vendorToProductId);
             let otherReference = await connection.models.VendorToProduct.findOne({where: {productId: referenceConverted.productId}});
 
             if (otherReference == null){
-                await connection.models.ProductToCategory.destroy({where: {productId: referenceConverted.productId}});
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (p:Product{ProductId:$productId})-[r:HAS_CATEGORY]->(c:Category) DELETE r"
+                , {productId: referenceConverted.productId}));
                 await connection.models.Product.destroy({where: {productId: referenceConverted.productId}});
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (p:Product{ProductId:$productId}) DELETE p"
+                , {productId: referenceConverted.productId}));
             }
 
             await connection.close();
+            await session.close();
+            await mongoose.disconnect();
         }
         catch (err){
             await connection.close();
+            await session.close();
+            await mongoose.disconnect();
             throw err;
         }  
+    }
+
+    public async removeVendorToProductEntry(vendorToProductId: number): Promise<void>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+        let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+        let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
+        let CustomerAction = mongoose.model<ICustomerAction>("CustomerAction", customerActionSchema, "CustomerAction");
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            // Check if the entry is referenced by product in cart
+            let foundReferenceResponse = await session.executeRead(tx => tx.run(
+                "MATCH (v:VendorToProduct{VendorToProductId:$vendorToProductId})-[r:IS_IN]->(s:ShoppingCart) RETURN r,s,v"
+            , {vendorToProductId: vendorToProductId}));
+
+            if (foundReferenceResponse.records.length > 0){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            // Check for recommendation reference
+            let foundRecommendation = await ProductRecommendation.findOne({'vendorToProductId': vendorToProductId});
+
+            if (foundRecommendation !== null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            // Check for review reference
+            let foundReview = await Review.findOne({'vendorToProductId': vendorToProductId});
+
+            if (foundReview !== null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            // Check for action reference
+            let foundAction = await CustomerAction.findOne({'vendorToProductId': vendorToProductId});
+
+            if (foundAction !== null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            // Check for image reference
+            let foundImage = await ProductImage.findOne({'vendorToProductId': vendorToProductId});
+
+            if (foundImage !== null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            // Check for video reference
+            let foundVideo = await ProductVideo.findOne({'vendorToProductId': vendorToProductId});
+
+            if (foundVideo !== null){
+                await connection.close();
+                await session.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${vendorToProductId} is referenced and cannot be deleted!`);
+            }
+
+            await connection.models.VendorToProduct.destroy({where: {vendorToProductId: vendorToProductId}});
+            await session.executeWrite(tx => tx.run(
+                "MATCH (v:VendorToProduct{VendorToProductId:$vendorToProductId}) DELETE v"
+            , {vendorToProductId: vendorToProductId}));
+            await connection.close();
+            await session.close();
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await connection.close();
+            await session.close();
+            await mongoose.disconnect();
+            throw err;
+        }  
+    }
+
+    public async removeProductImages(vendorToProductId: number): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+
+        try{
+            let images = await ProductImage.find({vendorToProductId: vendorToProductId});
+
+            for (let image of images){
+                await this.removeProductImage(image.pictureId);
+            }
+
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        }  
+    }
+
+    public async removeProductImage(imageId: number): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+
+        try{
+            await this.deleteMongoDBEntryByAttribute(ProductImage, "pictureId", imageId);
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        }  
+    }
+
+    public async removeProductVideos(vendorToProductId: number): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            let videos = await ProductVideo.find({vendorToProductId: vendorToProductId});
+
+            for (let video of videos){
+                await this.removeProductVideo(video.videoId);
+            }
+
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        }  
+    }
+
+    public async removeProductVideo(videoId: number): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            await this.deleteMongoDBEntryByAttribute(ProductVideo, "videoId", videoId);
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        }  
+    }
+
+    public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Remove the data
+            await mongooseModel.findOneAndDelete({[attributeName]: attributeValue});
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async deleteMongoDBEntriesByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Remove the data
+            await mongooseModel.deleteMany({[attributeName]: attributeValue});
+            await mongoose.disconnect();
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+
+    public async initializeNeo4j(): Promise<Driver>{
+        return new Promise<Driver>((resolve, reject) => {
+            try{
+            let driver = neo4j.driver(
+                process.env.NEO4J_URI,
+                neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+            );
+            resolve(driver);
+            } catch (err){
+                reject(err);
+            }
+        });
     }
 
     public async intializeMSSQL(): Promise<Sequelize>{

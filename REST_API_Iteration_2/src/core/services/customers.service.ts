@@ -1083,20 +1083,6 @@ export class CustomersService {
         } 
     }
 
-    public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
-        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
-
-        try{
-            // Remove the data
-            await mongooseModel.findOneAndDelete({[attributeName]: attributeValue});
-            await mongoose.disconnect();
-        }
-        catch (err){
-            await mongoose.disconnect();
-            throw err;
-        } 
-    }
-
     public async createCustomerAction(customerAction: CustomerAction): Promise<CustomerAction>{
         let connection: Sequelize = await this.intializeMSSQL();
         await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
@@ -1316,6 +1302,20 @@ export class CustomersService {
                 rating: result.rating, reviewDate: result.reviewDate
             } as Review;
             return toReturn;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+
+        try{
+            // Remove the data
+            await mongooseModel.findOneAndDelete({[attributeName]: attributeValue});
+            await mongoose.disconnect();
         }
         catch (err){
             await mongoose.disconnect();
