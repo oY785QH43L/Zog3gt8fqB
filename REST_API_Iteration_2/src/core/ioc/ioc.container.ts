@@ -13,6 +13,7 @@ import { VendorsService } from '../services/vendors.service';
 import { VendorsSessionService } from '../services/vendors.session.service';
 import { AdminService } from '../services/admin.service';
 import { AdminController } from '../../api/admin.controller';
+import { FormDataConversionService } from '../services/form.data.conversion.service';
 
 /**
  * The IoC container.
@@ -61,5 +62,6 @@ export class IoContainer{
         this.container.bind<HashingService>(HashingService.name).to(HashingService).inSingletonScope();
         this.container.bind<RequestBodyValidationService>(RequestBodyValidationService.name).to(RequestBodyValidationService).inSingletonScope();
         this.container.bind<RedisDatabaseService>(RedisDatabaseService.name).to(RedisDatabaseService).inSingletonScope();
+        this.container.bind<FormDataConversionService>(FormDataConversionService.name).to(FormDataConversionService).inSingletonScope();
     }
 }

@@ -661,14 +661,12 @@ export class CustomersController implements interfaces.Controller{
                 return;
             }
 
-            /*
             let verified = await this.customerSessionService.verifyCustomer(addProductToCartRequestBody.customerId);
 
             if (!verified){
                 response.status(403).json({message: "Unauthorized!"});
                 return;
             }
-                */
 
             await this.customersService.addProductToCart(addProductToCartRequestBody.vendorToProductId, addProductToCartRequestBody.shoppingCartId, addProductToCartRequestBody.amount);
             response.status(201).json({message: `Product with vendor' product ID ${addProductToCartRequestBody.vendorToProductId} of amount ${addProductToCartRequestBody.amount} was successfully added to cart!`});

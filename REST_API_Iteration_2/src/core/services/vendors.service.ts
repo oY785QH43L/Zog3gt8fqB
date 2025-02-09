@@ -21,6 +21,10 @@ import { IProductImage } from '../../models/mongodb.models/mongodb.interfaces/pr
 import productImageSchema from '../../models/mongodb.models/mongodb.schemas/product.image.mongodb.schema';
 import { IProductVideo } from '../../models/mongodb.models/mongodb.interfaces/product.video.mongodb.interface';
 import productVideoSchema from '../../models/mongodb.models/mongodb.schemas/product.video.mongodb.schema';
+import { ProductImage } from '../../models/product.image.model';
+import { ObjectId } from 'mongoose';
+import { ProductVideo } from '../../models/product.video.model';
+import {Category as CategoryNeo4j} from '../../models/neo4j.models/category.neo4j.model';
 
 /**
  * The vendors service.
@@ -68,6 +72,20 @@ export class VendorsService {
             await connection.close();
             throw err;
         }
+    }
+
+    public async getNewIdMongoDB(entityName: string, attributeName: string): Promise<Number>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let doc = await mongoose.connection.db.collection(entityName).findOne({[attributeName]: {$exists: true}});
+
+        if (doc == null){
+            await mongoose.disconnect();
+            return 0;
+        }
+
+        let foundDocument = await mongoose.connection.db.collection(entityName).find().sort({[attributeName]:-1}).limit(1).next(); 
+        await mongoose.disconnect();
+        return foundDocument[attributeName] + 1;
     }
 
     public async doesUsernameExist(userName: string): Promise<boolean>{
@@ -380,28 +398,48 @@ export class VendorsService {
 
     public async getVendorsProductInformation(vendorToProductId: number): Promise<ProductInformation>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             let vendorToProductData = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProductData == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
             }
 
             let vendorToProductDataConverted = vendorToProductData.dataValues as VendorToProduct;
             let productData = await connection.models.Product.findOne({where: {productId: vendorToProductDataConverted.productId}});
             let productDataConverted = productData.dataValues as Product;
-            let categories = await connection.query("select c.* from ProductToCategory pc " +
-                "left outer join Category c " +
-                    "on pc.CategoryId = c.CategoryId " +
-                    `where pc.ProductId = ${productDataConverted.productId}`);
-            let categoriesConverted: Category[] = categories[0].map(function(v){
-                return {categoryId: v["CategoryId"], name: v["Name"]} as Category;
+            let categories = await session.executeRead(tx => tx.run(
+                "MATCH (c)<-[r:HAS_CATEGORY]-(p:Product{ProductId: $productId}) return c"
+            , {productId: productDataConverted.productId}));
+
+            let categoriesConverted: Category[] = categories.records.map(function(v){
+                let category = v.get("c") as CategoryNeo4j;
+                return {categoryId: Number(category.properties.CategoryId), name: category.properties.Name} as Category;
             });
+
+            // Fetch the image and video
+            let images = await this.getProductImages(vendorToProductId);
+            let videos = await this.getProductVideos(vendorToProductId);
+            let image = null;
+            let video = null;
+
+            if (images.length > 0){
+                image = images[0].imageContent;
+            }
+
+            if (videos.length > 0){
+                video = videos[0].videoContent;
+            }
+
             let result = {productId: productDataConverted.productId, name: productDataConverted.name,
                 description: productDataConverted.description, unitPriceEuro: vendorToProductDataConverted.unitPriceEuro,
-                inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted
+                inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted,
+                productImage: image, productVideo: video
             } as ProductInformation;
             return result;
         }
@@ -450,8 +488,30 @@ export class VendorsService {
         }
     }
 
+    public async doesCategoryExist(productId: number, categoryId: number): Promise<boolean>{
+        let driver = await this.initializeNeo4j();
+        let session = driver.session(); 
+
+        try{
+
+            // Check if reference exists
+            let productToCategory = await session.executeRead(tx => tx.run(
+                "MATCH (p:Product{ProductId: $productId})-[r:HAS_CATEGORY]->(c:Category{CategoryId: $categoryId}) return r"
+            , {productId: productId, categoryId: categoryId}));
+
+            await session.close();
+            return productToCategory.records.length > 0;
+        }
+        catch (err){
+            await session.close();
+            throw err;
+        } 
+    }
+
     public async createProductCategoryReferenceIfNotExist(productId: number, categoryId: number): Promise<void>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             // Check if the category exists
@@ -459,7 +519,19 @@ export class VendorsService {
 
             if (category == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Category under ID ${categoryId} does not exist!`);
+            }
+
+            // Check if the category exists in Neo4j
+            let categoriesNeo4j = await session.executeRead(tx => tx.run(
+                "MATCH (c:Category{CategoryId: $categoryId}) return c"
+            , {categoryId: categoryId}));
+
+            if (categoriesNeo4j.records.length === 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Category with ID ${categoryId} does not exist!`);
             }
 
             // Check if the product exists
@@ -467,28 +539,70 @@ export class VendorsService {
 
             if (product == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`product under ID ${productId} does not exist!`);
             }      
+
+            // Check if the product exists in Neo4j
+            let productsNeo4j = await session.executeRead(tx => tx.run(
+                "MATCH (p:Product{ProductId: $productId}) return p"
+            , {productId: productId}));
+
+            if (productsNeo4j.records.length === 0){
+                await connection.close();
+                await session.close();
+                throw new Error(`Product under ID ${productId} does not exist!`);
+            }
             
             // Check if reference exists
-            let productToCategory = await connection.models.ProductToCategory.findOne({where: {productId: productId, categoryId: categoryId}});
+            let doesReferenceExist = await this.doesCategoryExist(productId, categoryId);
 
-            if (productToCategory == null){
-                let newId = await this.getNewId("ProductToCategory", "ProductToCategoryId");
-                let pcRef = {productToCategoryId: newId, productId: productId, categoryId: categoryId} as ProductToCategory;
-                await connection.models.ProductToCategory.create(pcRef as any);
+            if (!doesReferenceExist){
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (p:Product{ProductId: $productId}), (c:Category{CategoryId: $categoryId}) CREATE (p)-[r:HAS_CATEGORY]->(c)"
+                , {productId: productId, categoryId: categoryId}));
             }   
 
             await connection.close();
+            await session.close();
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         } 
     }
 
-    public async createNewVendorProduct(vendorId: number, productInformation: ProductInformation): Promise<ProductInformation>{
+    public async removeProductCategoryReference(productId: number, categoryId: number): Promise<void>{
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
+
+        try{
+
+            // Check if reference exists
+            let doesReferenceExist = await this.doesCategoryExist(productId, categoryId);
+
+            if (!doesReferenceExist){
+                await session.close();
+                return;
+            }   
+
+
+            await session.executeWrite(tx => tx.run(
+                "MATCH (p:Product{ProductId: $productId})-[r:HAS_CATEGORY]->(c:Category{CategoryId: $categoryId}) DELETE r"
+            , {productId: productId, categoryId: categoryId}));
+            await session.close();
+        }
+        catch (err){
+            await session.close();
+            throw err;
+        } 
+    }
+
+    public async createNewVendorProduct(vendorId: number, productInformation: ProductInformation): Promise<Number>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             // Check if vendor exists
@@ -496,6 +610,7 @@ export class VendorsService {
 
             if (foundVendor == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Vendor with ID ${vendorId} does not exist!`);
             }
 
@@ -518,24 +633,35 @@ export class VendorsService {
             });
 
             let productId = 0;
+            let vendorToProductId = 0;
             
             if (otherVendorsProductsConverted.length == 0){
                 let newProduct = {productId: productInformation.productId, name: productInformation.name, description: productInformation.description} as Product;
                 await connection.models.Product.create(newProduct as any);
-                let newVendorToProductId = await this.getNewId("VendorToProduct", "VendorToProductId");
-                let productReference = {vendorToProductId: newVendorToProductId, vendorId: vendorId, productId: productInformation.productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
+                await session.executeWrite(tx => tx.run(
+                    "CREATE (p:Product{ProductId: TOINTEGER($productId), Name: $name, Description: $description})"
+                , {productId: productInformation.productId, name: productInformation.name, description: productInformation.description}));
+                let newId = await this.getNewId("VendorToProduct", "VendorToProductId");
+                vendorToProductId = Number(newId);
+                let productReference = {vendorToProductId: vendorToProductId, vendorId: vendorId, productId: productInformation.productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
                 await connection.models.VendorToProduct.create(productReference as any);
+                let query = "CREATE (v:VendorToProduct{VendorToProductId: TOINTEGER($vendorToProductId), VendorId: TOINTEGER($vendorId), ProductId: TOINTEGER($productId), UnitPriceEuro: $priceEuro, InventoryLevel: TOINTEGER($inventoryLevel)})";
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, vendorId: vendorId, productId: productInformation.productId, priceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel}));
                 productId = newProduct.productId;
             } else{
-                let newVendorToProductId = await this.getNewId("VendorToProduct", "VendorToProductId");
-                let productReference = {vendorToProductId: newVendorToProductId, vendorId: vendorId, productId: otherVendorsProductsConverted[0].productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
+                let newId = await this.getNewId("VendorToProduct", "VendorToProductId");
+                vendorToProductId = Number(newId);
+                let productReference = {vendorToProductId: vendorToProductId, vendorId: vendorId, productId: otherVendorsProductsConverted[0].productId, unitPriceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel} as VendorToProduct;
                 await connection.models.VendorToProduct.create(productReference as any);
+                let query = "CREATE (v:VendorToProduct{VendorToProductId: TOINTEGER($vendorToProductId), VendorId: TOINTEGER($vendorId), ProductId: TOINTEGER($productId), UnitPriceEuro: $priceEuro, InventoryLevel: TOINTEGER($inventoryLevel)})";
+                await session.executeWrite(tx => tx.run(query, {vendorToProductId: vendorToProductId, vendorId: vendorId, productId: otherVendorsProductsConverted[0].productId, priceEuro: productInformation.unitPriceEuro, inventoryLevel: productInformation.inventoryLevel}))
                 productId = otherVendorsProductsConverted[0].productId;
             }
 
             if (productInformation.categories.length == 0){
                 await connection.close();
-                return productInformation;
+                await session.close();
+                return vendorToProductId;
             }
 
             let catIds = productInformation.categories.map(function(c){
@@ -543,17 +669,21 @@ export class VendorsService {
             });
 
             await connection.close();
+            await session.close();
             await this.createProductCategoryReferencesIfNotExist(productId, catIds);
-            return productInformation;
+            return vendorToProductId;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
 
     public async updateVendorProduct(vendorId: number, vendorToProductId: number, informationToUpdate: ProductInformation): Promise<ProductInformation>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             // Check if vendor exists
@@ -561,6 +691,7 @@ export class VendorsService {
 
             if (foundVendor == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Vendor with ID ${vendorId} does not exist!`);
             }
 
@@ -569,6 +700,18 @@ export class VendorsService {
 
             if (foundVendorReference == null){
                 await connection.close();
+                await session.close();
+                throw new Error(`Vendor with ID ${vendorId} does not have a product with vendor's product ID ${vendorToProductId}`);
+            }
+
+            // Check if product belongs to vendor in Neo4j
+            let foundVendorToProductsNeo4j = await session.executeRead(tx => tx.run(
+                "MATCH (v:VendorToProduct{VendorId: $vendorId, VendorToProductId: $vendorToProductId}) RETURN v"
+            , {vendorId: vendorId, vendorToProductId: vendorToProductId}));
+
+            if (foundVendorToProductsNeo4j.records.length == 0){
+                await connection.close();
+                await session.close();
                 throw new Error(`Vendor with ID ${vendorId} does not have a product with vendor's product ID ${vendorToProductId}`);
             }
 
@@ -576,15 +719,19 @@ export class VendorsService {
 
             // Check if the product is already referenced by some customers
             let orderPositionReference = await connection.models.OrderPosition.findOne({where: {vendorToProductId: vendorToProductId}});
-            let shoppingCartReference = await connection.models.ProductToCart.findOne({where: {vendorToProductId: vendorToProductId}});
+            let shoppingCartReference = await session.executeRead(tx => tx.run(
+                "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId})-[r:IS_IN]->(s:ShoppingCart) RETURN v,r,s"
+            , {vendorToProductId: vendorToProductId}));
 
             if (orderPositionReference !== null){
                 await connection.close();
+                await session.close();
                 throw new Error(`The product information about inventory and unit price cannot be updated because it is referenced by another order position!`);
             }
 
-            if (shoppingCartReference !== null){
+            if (shoppingCartReference.records.length > 0){
                 await connection.close();
+                await session.close();
                 throw new Error(`The product information about inventory and unit price cannot be updated because it is referenced by an item in a shopping cart!`);
             }
 
@@ -598,27 +745,43 @@ export class VendorsService {
                 let otherProductConverted = otherExistingProduct.dataValues as Product;
                 let updateData = {productId: otherProductConverted.productId, unitPriceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel};
                 await connection.models.VendorToProduct.update(updateData, {where: {vendorToProductId: vendorToProductId}})
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) SET v.ProductId = TOINTEGER($productId), v.UnitPriceEuro = $priceEuro, v.InventoryLevel = TOINTEGER($inventoryLevel) RETURN v"
+                , {vendorToProductId: vendorToProductId, productId: otherProductConverted.productId, priceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel }));
             } else{
                 let newProductId = await this.getNewId("Product", "ProductId");
                 let productData = {productId: newProductId, name: informationToUpdate.name, description: informationToUpdate.description} as Product;
                 await connection.models.Product.create(productData as any);
+                await session.executeWrite(tx => tx.run(
+                    "CREATE (p:Product{ProductId: TOINTEGER($productId), Name: $name, Description: $description}) "
+                , {productId: newProductId, name: informationToUpdate.name, description: informationToUpdate.description}));
                 let updateData = {productId: newProductId, unitPriceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel};
-                await connection.models.VendorToProduct.update(updateData, {where: {vendorToProductId: vendorToProductId}})
+                await connection.models.VendorToProduct.update(updateData, {where: {vendorToProductId: vendorToProductId}});
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (v:VendorToProduct{VendorToProductId: $vendorToProductId}) SET v.ProductId = TOINTEGER($productId), v.UnitPriceEuro = $priceEuro, v.InventoryLevel = TOINTEGER($inventoryLevel) RETURN v"
+                , {vendorToProductId: vendorToProductId, productId: newProductId, priceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel}));
             }
 
             // Remove the old product if it is no longer referenced
             let otherProductReference = await connection.models.VendorToProduct.findOne({where: {productId: referenceConverted.productId}});
 
             if (otherProductReference == null){
-                await connection.models.ProductToCategory.destroy({where: {productId: referenceConverted.productId}});
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (p:Product{ProductId: $productId})-[r:HAS_CATEGORY]->(c) DELETE r"
+                , {productId: referenceConverted.productId}));
                 await connection.models.Product.destroy({where: {productId: referenceConverted.productId}});
+                await session.executeWrite(tx => tx.run(
+                    "MATCH (p:Product{ProductId: $productId}) DELETE p"
+                , {productId: referenceConverted.productId}));
             }
 
             await connection.close();
+            await session.close();
             return informationToUpdate;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
@@ -678,6 +841,7 @@ export class VendorsService {
             await this.removeVendorToProductEntry(vendorToProductId);
             let otherReference = await connection.models.VendorToProduct.findOne({where: {productId: referenceConverted.productId}});
 
+            // Remove the global products and category references if necessary
             if (otherReference == null){
                 await session.executeWrite(tx => tx.run(
                     "MATCH (p:Product{ProductId:$productId})-[r:HAS_CATEGORY]->(c:Category) DELETE r"
@@ -810,11 +974,14 @@ export class VendorsService {
     }
 
     public async removeProductImage(imageId: number): Promise<void>{
-        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
         let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
 
         try{
-            await this.deleteMongoDBEntryByAttribute(ProductImage, "pictureId", imageId);
+            let imageToDelete = await ProductImage.findOne({pictureId: imageId});
+            let imagesBucket = new mongoose.mongo.GridFSBucket(connection.connection.db, {bucketName: process.env.IMAGES_BUCKET_NAME});
+            await imagesBucket.delete(imageToDelete.imageContent);
+            await this.deleteMongoDBEntryByAttribute(ProductImage, "pictureId", imageToDelete.pictureId);
             await mongoose.disconnect();
         }
         catch (err){
@@ -843,10 +1010,13 @@ export class VendorsService {
     }
 
     public async removeProductVideo(videoId: number): Promise<void>{
-        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
         let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
 
         try{
+            let videoToDelete = await ProductVideo.findOne({videoId: videoId});
+            let videosBucket = new mongoose.mongo.GridFSBucket(connection.connection.db, {bucketName: process.env.VIDEOS_BUCKET_NAME});
+            await videosBucket.delete(videoToDelete.videoContent);
             await this.deleteMongoDBEntryByAttribute(ProductVideo, "videoId", videoId);
             await mongoose.disconnect();
         }
@@ -854,6 +1024,205 @@ export class VendorsService {
             await mongoose.disconnect();
             throw err;
         }  
+    }
+
+    public async createProductImage(productImage: ProductImage, fileName: string, contentType: string, buffer): Promise<ProductImage>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        let mongodbConnection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let imagesBucket = new mongoose.mongo.GridFSBucket(mongodbConnection.connection.db, {bucketName: process.env.IMAGES_BUCKET_NAME});
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+
+        try{
+            // Check if the ID already exists
+            let foundImage = await ProductImage.findOne({'pictureId': productImage.pictureId});
+
+            if (foundImage !== null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Image with ID ${productImage.pictureId} already exists!`);
+            }
+
+            // Check if the product exists
+            let foundProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: productImage.vendorToProductId}});
+
+            if (foundProduct == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${productImage.vendorToProductId} does not exist!`);
+            }
+
+            let fileId: ObjectId = await new Promise((resolve, reject) => {
+                const uploadStream = imagesBucket.openUploadStream(fileName, {
+                contentType: contentType,
+                });
+                uploadStream.end(buffer);
+                uploadStream.on("finish", (file) => resolve(file._id));
+                uploadStream.on("error", (err) => reject(err));
+            });
+
+            let newImage = new ProductImage({
+                pictureId: productImage.pictureId,
+                vendorToProductId: productImage.vendorToProductId,
+                imageContent: fileId,
+            });
+            await newImage.save();
+            await connection.close();
+            await mongoose.disconnect();
+            return productImage;
+        }
+        catch (err){
+            await connection.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async createProductVideo(productVideo: ProductVideo, fileName: string, contentType: string, buffer): Promise<ProductVideo>{
+        let connection: Sequelize = await this.intializeMSSQL();
+        let mongodbConnection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let videosBucket = new mongoose.mongo.GridFSBucket(mongodbConnection.connection.db, {bucketName: process.env.VIDEOS_BUCKET_NAME});
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            // Check if the ID already exists
+            let foundVideo = await ProductVideo.findOne({'videoId': productVideo.videoId});
+
+            if (foundVideo !== null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Video with ID ${productVideo.videoContent} already exists!`);
+            }
+
+            // Check if the product exists
+            let foundProduct = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: productVideo.vendorToProductId}});
+
+            if (foundProduct == null){
+                await connection.close();
+                await mongoose.disconnect();
+                throw new Error(`Vendor's product with ID ${productVideo.vendorToProductId} does not exist!`);
+            }
+
+            let fileId: ObjectId = await new Promise((resolve, reject) => {
+                const uploadStream = videosBucket.openUploadStream(fileName, {
+                contentType: contentType,
+                });
+                uploadStream.end(buffer);
+                uploadStream.on("finish", (file) => resolve(file._id));
+                uploadStream.on("error", (err) => reject(err));
+            });
+
+            let newVideo = new ProductVideo({
+                videoId: productVideo.videoId,
+                vendorToProductId: productVideo.vendorToProductId,
+                videoContent: fileId,
+            });
+            await newVideo.save();
+            await connection.close();
+            await mongoose.disconnect();
+            return productVideo;
+        }
+        catch (err){
+            await connection.close();
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async getProductImages(vendorToProductId: number): Promise<Array<ProductImage>>{
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let database = connection.connection.db;
+        mongoose.mongo.GridFSBucket
+        let bucket = new mongoose.mongo.GridFSBucket(database, {bucketName: process.env.IMAGES_BUCKET_NAME});
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+
+        try{
+            let images = await ProductImage.find({ vendorToProductId: vendorToProductId });
+            let result: ProductImage[] = [];
+    
+            // For each document, read the file from GridFS and convert to base64.
+            for (let image of images) {
+            let base64Content = await this.getFileBase64(image.imageContent, bucket);
+            result.push({
+                pictureId: image.pictureId,
+                vendorToProductId: image.vendorToProductId,
+                imageContent: base64Content,
+            } as ProductImage);
+            }
+
+            await mongoose.disconnect()
+            return result;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async getProductVideos(vendorToProductId: number): Promise<Array<ProductVideo>>{
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let database = connection.connection.db;
+        mongoose.mongo.GridFSBucket
+        let bucket = new mongoose.mongo.GridFSBucket(database, {bucketName: process.env.VIDEOS_BUCKET_NAME});
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            let videos = await ProductVideo.find({ vendorToProductId: vendorToProductId });
+            let result: ProductVideo[] = [];
+    
+            for (let video of videos) {
+            let base64Content = await this.getFileBase64(video.videoContent, bucket);
+            result.push({
+                videoId: video.videoId,
+                vendorToProductId: video.vendorToProductId,
+                videoContent: base64Content,
+            } as ProductVideo);
+            }
+
+            await mongoose.disconnect()
+            return result;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async updateVideo(productVideo: ProductVideo, fileName: string, contentType: string, buffer): Promise<ProductVideo>{
+        try{
+            await this.removeProductVideos(productVideo.vendorToProductId);
+            await this.createProductVideo(productVideo, fileName, contentType, buffer);
+            return productVideo;
+        }
+        catch (err){
+
+            throw err;
+        } 
+    }
+
+    public async updateImage(productImage: ProductImage, fileName: string, contentType: string, buffer): Promise<ProductImage>{
+        try{
+            await this.removeProductImages(productImage.vendorToProductId);
+            await this.createProductImage(productImage, fileName, contentType, buffer);
+            return productImage;
+        }
+        catch (err){
+
+            throw err;
+        } 
+    }
+
+    public getFileBase64(fileId: mongoose.Types.ObjectId, bucket): Promise<string> {
+        return new Promise((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          bucket
+            .openDownloadStream(fileId)
+            .on("data", (chunk) => chunks.push(chunk))
+            .on("error", (err) => reject(err))
+            .on("end", () => {
+              const buffer = Buffer.concat(chunks);
+              resolve(buffer.toString("base64"));
+            });
+        });
     }
 
     public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{

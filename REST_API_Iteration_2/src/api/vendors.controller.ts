@@ -1,5 +1,5 @@
-import { inject, injectable } from 'inversify';
-import { controller, httpDelete, httpGet, httpPost, httpPut, interfaces, queryParam, request } from 'inversify-express-utils';
+import { BindingScopeEnum, inject, injectable } from 'inversify';
+import { controller, httpDelete, httpGet, httpPost, httpPut, interfaces, queryParam, request, response } from 'inversify-express-utils';
 import { Request, Response } from 'express';
 import { VendorsService } from '../core/services/vendors.service';
 import { HashingService } from '../core/services/hashing.service';
@@ -21,7 +21,19 @@ import { UpdateVendorProductRequestBody } from '../models/request.bodies/vendor.
 import { AddCategoryRequestBody } from '../models/request.bodies/vendor.request.bodies/add.category.request.body';
 import { VendorToProduct } from '../models/vendor.to.product.model';
 import { RemoveCategoryRequestBody } from '../models/request.bodies/vendor.request.bodies/remove.category.request.body';
-
+import mongoose, { ObjectId } from 'mongoose';
+import { Db, GridFSBucket } from 'mongodb';
+import {IncomingForm} from 'formidable';
+import { IProductImage } from '../models/mongodb.models/mongodb.interfaces/product.image.mongodb.interface';
+import productImageSchema from '../models/mongodb.models/mongodb.schemas/product.image.mongodb.schema';
+import * as multer from "multer";
+import { IProductVideo } from '../models/mongodb.models/mongodb.interfaces/product.video.mongodb.interface';
+import productVideoSchema from '../models/mongodb.models/mongodb.schemas/product.video.mongodb.schema';
+import { FormDataConversionService } from '../core/services/form.data.conversion.service';
+import { ProductImage } from '../models/product.image.model';
+import { ProductVideo } from '../models/product.video.model';
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 @controller("/vendor")
 @injectable()
@@ -30,7 +42,8 @@ export class VendorsController implements interfaces.Controller{
                 @inject(HashingService.name) private hashingService: HashingService,
                 @inject(VendorsService.name) private vendorsService: VendorsService,
                 @inject(VendorsSessionService.name) private vendorSessionService: VendorsSessionService,
-                @inject(RequestBodyValidationService.name) private requestBodyValidationService: RequestBodyValidationService
+                @inject(RequestBodyValidationService.name) private requestBodyValidationService: RequestBodyValidationService,
+                @inject(FormDataConversionService.name) private formDataConversionService: FormDataConversionService
             ){}
 
     /**
@@ -520,6 +533,9 @@ export class VendorsController implements interfaces.Controller{
      *     {
      *        categoryId: number
      *     },
+     *    // multer
+     *    imageContent: <file>,
+     *    videoContent: <file>
      *    ...
      *  ]
      * }
@@ -528,19 +544,19 @@ export class VendorsController implements interfaces.Controller{
      *    message: string
      *  }
      */
-    @httpPost("/product/create")
+    @httpPost("/product/create", upload.fields([{name: "imageContent", maxCount: 1}, {name: "videoContent", maxCount: 1}]))
     public async addVendorProduct(request: Request, response: Response): Promise<void>{
         try{
-            let createVendorProductRequestBody: CreateVendorProductRequestBody = request.body as CreateVendorProductRequestBody;
+            let bodyConverted = this.formDataConversionService.convertToCreateVendorProductRequestBody(request.body);
 
             try{
-                this.requestBodyValidationService.validateCreateVendorProductRequestBody(createVendorProductRequestBody);
+                this.requestBodyValidationService.validateCreateVendorProductRequestBody(bodyConverted);
             } catch (err){
                 response.status(400).json({message: err.message})
                 return;
             }
             
-            let verified = await this.vendorSessionService.verifyVendor(createVendorProductRequestBody.vendorId);
+            let verified = await this.vendorSessionService.verifyVendor(bodyConverted.vendorId);
 
             if (!verified){
                 response.status(403).json({message: "Unauthorized!"});
@@ -550,12 +566,12 @@ export class VendorsController implements interfaces.Controller{
             let categories: Category[] = [];
 
             // Check if categories exist
-            if (createVendorProductRequestBody.categories.length !== 0){
-                let ids = createVendorProductRequestBody.categories.map((c) => c.categoryId);
+            if (bodyConverted.categories.length !== 0){
+                let ids = bodyConverted.categories.map((c) => c.categoryId);
                 let connection = await this.vendorsService.intializeMSSQL();
                 let data = await connection.models.Category.findAll({where: {categoryId: {[Op.in]: ids}}});
 
-                if (data.length != createVendorProductRequestBody.categories.length){
+                if (data.length != bodyConverted.categories.length){
                     response.status(400).json({message: "Non existing categories detected!"});
                     await connection.close();
                     return;
@@ -570,12 +586,33 @@ export class VendorsController implements interfaces.Controller{
 
             // Generate new product ID
             let newId = await this.vendorsService.getNewId("Product", "ProductId");
-            let productInformation = {productId: newId, name: createVendorProductRequestBody.name, description: createVendorProductRequestBody.description,
-                unitPriceEuro: createVendorProductRequestBody.unitPriceEuro, inventoryLevel: createVendorProductRequestBody.inventoryLevel,
+            let productInformation = {productId: newId, name: bodyConverted.name, description: bodyConverted.description,
+                unitPriceEuro: bodyConverted.unitPriceEuro, inventoryLevel: bodyConverted.inventoryLevel,
                 categories: categories
             } as ProductInformation;
-            let product = await this.vendorsService.createNewVendorProduct(createVendorProductRequestBody.vendorId, productInformation);
-            response.status(200).json({message: "The product was successfully created!"});
+            let vendorToProductId = await this.vendorsService.createNewVendorProduct(bodyConverted.vendorId, productInformation);
+
+            // Create new image
+            if (request.files["imageContent"] != undefined){
+                let newImageId = await this.vendorsService.getNewIdMongoDB("ProductImage", "pictureId");
+                let fileName = request.files["imageContent"][0].originalname;
+                let contentType = request.files["imageContent"][0].mimetype;
+                let buffer = request.files["imageContent"][0].buffer;
+                let image = {pictureId: newImageId, vendorToProductId: vendorToProductId, imageContent: ""} as ProductImage;
+                await this.vendorsService.createProductImage(image, fileName, contentType, buffer);
+            }
+
+            // Create new video
+            if (request.files["videoContent"] != undefined){
+                let newVideoId = await this.vendorsService.getNewIdMongoDB("ProductVideo", "videoId");
+                let fileName = request.files["videoContent"][0].originalname;
+                let contentType = request.files["videoContent"][0].mimetype;
+                let buffer = request.files["videoContent"][0].buffer;
+                let video = {videoId: newVideoId, vendorToProductId: vendorToProductId, videoContent: ""} as ProductVideo;
+                await this.vendorsService.createProductVideo(video, fileName, contentType, buffer);
+            }
+
+            response.status(201).json({message: "The product was successfully created!"});
         }
         catch (err){
             response.status(500).json({message: err.message});
@@ -591,7 +628,9 @@ export class VendorsController implements interfaces.Controller{
      *   unitPriceEuro: number,
      *   inventoryLevel: number,
      *   name: string,
-     *   description: string
+     *   description: string,
+     *   imageContent: <file>,
+     *   videoContent: <file>
      * }
      * @param response The response. Format
      *  {
@@ -600,23 +639,25 @@ export class VendorsController implements interfaces.Controller{
      *       unitPriceEuro: number,
      *       inventoryLevel: number,
      *       name: string,
-     *       description: string
+     *       description: string,
+     *       productImage: string,
+     *       productVideo: string
      *    }
      *  }
      */
-    @httpPut("/product/update/:pid")
+    @httpPut("/product/update/:pid", upload.fields([{name: "imageContent", maxCount: 1}, {name: "videoContent", maxCount: 1}]))
     public async updateVendorProduct(request: Request, response: Response): Promise<void>{
         try{
-            let updateVendorProductRequestBody: UpdateVendorProductRequestBody = request.body as UpdateVendorProductRequestBody;
+            let bodyConverted = this.formDataConversionService.convertToUpdateVendorProductRequestBody(request.body);
 
             try{
-                this.requestBodyValidationService.validateUpdateVendorProductRequestBody(updateVendorProductRequestBody);
+                this.requestBodyValidationService.validateUpdateVendorProductRequestBody(bodyConverted);
             } catch (err){
                 response.status(400).json({message: err.message})
                 return;
             }
             
-            let verified = await this.vendorSessionService.verifyVendor(updateVendorProductRequestBody.vendorId);
+            let verified = await this.vendorSessionService.verifyVendor(bodyConverted.vendorId);
 
             if (!verified){
                 response.status(403).json({message: "Unauthorized!"});
@@ -625,23 +666,60 @@ export class VendorsController implements interfaces.Controller{
 
             let vendorToProductId = Number(request.params.pid);
 
-            if (vendorToProductId !== updateVendorProductRequestBody.vendorToProductId){
+            if (vendorToProductId !== bodyConverted.vendorToProductId){
                 response.status(400).json({message: "Vendor's product ID in the request parameters and in the request body do not match!"});
                 return;
             }
 
-            let updateInformation = {productId: -1, name: updateVendorProductRequestBody.name, description: updateVendorProductRequestBody.description,
-                unitPriceEuro: updateVendorProductRequestBody.unitPriceEuro, inventoryLevel: updateVendorProductRequestBody.inventoryLevel,
+            let updateInformation = {productId: -1, name: bodyConverted.name, description: bodyConverted.description,
+                unitPriceEuro: bodyConverted.unitPriceEuro, inventoryLevel: bodyConverted.inventoryLevel,
                 categories: []
             } as ProductInformation;
-            let updateInfo = await this.vendorsService.updateVendorProduct(updateVendorProductRequestBody.vendorId, vendorToProductId, updateInformation);
+            let updateInfo = await this.vendorsService.updateVendorProduct(bodyConverted.vendorId, vendorToProductId, updateInformation);
+            let productImage = null;
+            let productVideo = null;
+
+            // Reupload the product image
+            if (request.files["imageContent"] != undefined){
+                let newImageId = await this.vendorsService.getNewIdMongoDB("ProductImage", "pictureId");
+                let fileName = request.files["imageContent"][0].originalname;
+                let contentType = request.files["imageContent"][0].mimetype;
+                let buffer = request.files["imageContent"][0].buffer;
+                let image = {pictureId: newImageId, vendorToProductId: vendorToProductId, imageContent: ""} as ProductImage;
+                await this.vendorsService.updateImage(image, fileName, contentType, buffer);
+            }
+
+            // Reupload the product video
+            if (request.files["videoContent"] != undefined){
+                let newVideoId = await this.vendorsService.getNewIdMongoDB("ProductVideo", "videoId");
+                let fileName = request.files["videoContent"][0].originalname;
+                let contentType = request.files["videoContent"][0].mimetype;
+                let buffer = request.files["videoContent"][0].buffer;
+                let video = {videoId: newVideoId, vendorToProductId: vendorToProductId, videoContent: ""} as ProductVideo;
+                await this.vendorsService.updateVideo(video, fileName, contentType, buffer);
+            }
+
+            let fetchedImages = await this.vendorsService.getProductImages(vendorToProductId);
+
+            if (fetchedImages.length > 0){
+                productImage = fetchedImages[0].imageContent;
+            }
+
+            let fetchedVideos = await this.vendorsService.getProductVideos(vendorToProductId);
+
+            if (fetchedImages.length > 0){
+                productVideo = fetchedVideos[0].videoContent;
+            }
+
             let resultObject = {
                 message: "The product was successfully updated!", 
                 updatedData: {
                     unitPriceEuro: updateInformation.unitPriceEuro,
                     inventoryLevel: updateInformation.inventoryLevel,
                     name: updateInformation.name,
-                    description: updateInformation.description
+                    description: updateInformation.description,
+                    productImage: productImage,
+                    productVideo: productVideo
             }};
 
             response.status(201).json(resultObject);
@@ -663,6 +741,8 @@ export class VendorsController implements interfaces.Controller{
      *       description: string,
      *       unitPriceEuro: decimal,
      *       inventoryLevel: number,
+     *       productVideo: content,
+     *       productImage: content,
      *       categories: [
      *         {
      *           categoryId: number,
@@ -708,7 +788,6 @@ export class VendorsController implements interfaces.Controller{
         try{
             let vendorId = Number(request.params.vid); 
             let vendorToProductId = Number(request.params.pid);
-
             let verified = await this.vendorSessionService.verifyVendor(vendorId);
 
             if (!verified){
@@ -794,7 +873,7 @@ export class VendorsController implements interfaces.Controller{
     }
 
     /**
-     * Adds a category to the global product definition.
+     * Removes a category from the global product definition.
      * @param request The request body. Format:
      * {
      *   vendorId: number;
@@ -844,14 +923,14 @@ export class VendorsController implements interfaces.Controller{
 
             // Check if the product has the category
             let referenceConverted = vendorReference.dataValues as VendorToProduct;
-            let foundProductCategory = await connection.models.ProductToCategory.findOne({where: {categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId}});
 
-            if (foundProductCategory == null){
+            let doesCategoryExist = await this.vendorsService.doesCategoryExist(referenceConverted.productId,  removeCategoryRequestBody.categoryId);
+            if (!doesCategoryExist){
                 response.status(400).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} does not exist for product with ID ${referenceConverted.productId}!`});
                 return;
             }
 
-            await connection.models.ProductToCategory.destroy({where: {categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId}});
+            await this.vendorsService.removeProductCategoryReference(referenceConverted.productId, removeCategoryRequestBody.categoryId);
             await connection.close();
             response.status(201).json({message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!`});
         }        

@@ -16,4 +16,7 @@ Following libraries have to be installed using npm:
 * neo4j-driver
 * mongoose
 * mongodb
-
+* @types/multer
+* gridfs-stream
+* multer
+* multer-gridfs-storage

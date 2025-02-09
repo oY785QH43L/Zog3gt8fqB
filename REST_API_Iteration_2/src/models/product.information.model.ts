@@ -6,5 +6,7 @@ export interface ProductInformation{
     description: string;
     unitPriceEuro: number;
     inventoryLevel: number;
+    productImage: string;
+    productVideo: string;
     categories: Category[];
 }
