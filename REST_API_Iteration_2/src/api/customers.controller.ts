@@ -586,6 +586,8 @@ export class CustomersController implements interfaces.Controller{
      *       description: string,
      *       unitPriceEuro: decimal,
      *       inventoryLevel: number,
+     *       productImage: content,
+     *       productVideo: content,
      *       categories: [
      *         {
      *           categoryId: number,
@@ -594,6 +596,17 @@ export class CustomersController implements interfaces.Controller{
      *        ...
      *       ]
      *    },
+     *     productReviews: [
+     *           {
+     *                 reviewId: number,
+     *                 customerId: number,
+     *                 vendorToProductId: number,
+     *                 reviewText: string,
+     *                 rating: number,
+     *                 reviewDate: Date
+     *           },
+     *          ...
+     *       ],
      *    vendorInformation{
      *       vendorId: number,
      *       name: string,
@@ -627,7 +640,15 @@ export class CustomersController implements interfaces.Controller{
 
             let productInformation: ProductInformation = await this.customersService.getVendorsProductInformation(productId);
             let vendorInformation: VendorInformation = await this.customersService.getVendorInformation(productId);
-            let result = {productInformation: productInformation, vendorInformation: vendorInformation};
+            let reviews: Review[] = await this.customersService.getReviews(productId);
+            let result = {productInformation: productInformation, productReviews: reviews, vendorInformation: vendorInformation};
+            let newActionId = await this.customersService.getNewIdMongoDB("CustomerAction", "customerActionId");
+            let now = new Date();
+            let action = {customerActionId: newActionId, customerId: customerId,
+                vendorToProductId: productId, actionType: "view",
+                actionDate: now
+            } as CustomerAction;
+            await this.customersService.createCustomerAction(action);
             response.status(200).json(result);
         }
         catch (err){
@@ -1007,6 +1028,104 @@ export class CustomersController implements interfaces.Controller{
             let Review = mongoose.model<IReview>("Review", reviewSchema, "Review");
             await this.customersService.deleteMongoDBEntryByAttribute(Review, "reviewId", rid);
             response.status(200).json({message: `Review with the ID ${rid} was deleted!`});
+        }
+        catch (err){
+            response.status(500).json({message: err.message});
+        }
+    }
+
+    /**
+     * Gets recommended products a customer.
+     * @param request The request body.
+     * @param response The response. Format:
+     *  {
+     *    result: [
+     *            {
+     *               productInformation: {
+     *                  productId: number
+     *                  name: string,
+     *                  description: string,
+     *                  unitPriceEuro: decimal,
+     *                  inventoryLevel: number,
+     *                  productImage: content,
+     *                  productVideo: content,
+     *                  categories: [
+     *                    {
+     *                      categoryId: number,
+     *                      name: string
+     *                    },
+     *                   ...
+     *                  ]
+     *               },
+     *                productReviews: [
+     *                      {
+     *                            reviewId: number,
+     *                            customerId: number,
+     *                            vendorToProductId: number,
+     *                            reviewText: string,
+     *                            rating: number,
+     *                            reviewDate: Date
+     *                      },
+     *                     ...
+     *                   ],
+     *               vendorInformation{
+     *                  vendorId: number,
+     *                  name: string,
+     *                  userName: string,
+     *                  email: string,
+     *                  phoneNumber: string
+     *                  vendorAddresses: [
+     *                    {
+     *                      addressId: number,
+     *                      street: string,
+     *                      city: string,
+     *                      postalCode: string,
+     *                      country: string
+     *                    },
+     *                    ...
+     *                  ]
+     *               }
+     *            },
+     *          ...
+     *   ]
+     *  }
+     */
+    @httpGet("/recommended/product/:kid")
+    public async viewRecommendedProducts(request: Request, response: Response): Promise<void>{
+        try{
+            let kid = Number(request.params.kid);
+            let verified = await this.customerSessionService.verifyCustomer(kid);
+
+            if (!verified){
+                response.status(403).json({message: "Unauthorized!"});
+                return;
+            }
+
+            let recommendations = await this.customersService.getProductRecommendations(kid);
+
+
+            // Filter the ones with high purchase probability
+            let recommendationsFiltered = recommendations.filter(r => r.purchaseProbability >= 0.9);
+
+            let currentDate = new Date();
+            let result = {result: []};
+
+            for (let recommendation of recommendationsFiltered){
+                let productId = recommendation.vendorToProductId;
+                let productInformation: ProductInformation = await this.customersService.getVendorsProductInformation(productId);
+                let vendorInformation: VendorInformation = await this.customersService.getVendorInformation(productId);
+                let reviews: Review[] = await this.customersService.getReviews(productId);
+                let toAppend = {productInformation: productInformation, productReviews: reviews, vendorInformation: vendorInformation};
+                result["result"].push(toAppend);
+                let newActionId = await this.customersService.getNewIdMongoDB("CustomerAction", "customerActionId");
+                let action = {customerActionId: newActionId, customerId: kid,
+                    vendorToProductId: productId, actionType: "view",
+                    actionDate: currentDate
+                } as CustomerAction;
+                await this.customersService.createCustomerAction(action);
+            }
+
+            response.status(200).json(result);
         }
         catch (err){
             response.status(500).json({message: err.message});

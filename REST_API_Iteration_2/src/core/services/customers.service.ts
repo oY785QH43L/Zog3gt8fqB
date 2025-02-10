@@ -31,6 +31,15 @@ import customerActionSchema from '../../models/mongodb.models/mongodb.schemas/cu
 import { CustomerAction } from '../../models/customer.action.model';
 import { Review } from '../../models/review.model';
 import { VendorProductIsInCart } from '../../models/neo4j.models/product.is.in.cart.neo4j.model';
+import { IProductVideo } from '../../models/mongodb.models/mongodb.interfaces/product.video.mongodb.interface';
+import productVideoSchema from '../../models/mongodb.models/mongodb.schemas/product.video.mongodb.schema';
+import { IProductImage } from '../../models/mongodb.models/mongodb.interfaces/product.image.mongodb.interface';
+import productImageSchema from '../../models/mongodb.models/mongodb.schemas/product.image.mongodb.schema';
+import { ProductImage } from '../../models/product.image.model';
+import { ObjectId } from 'mongoose';
+import { ProductVideo } from '../../models/product.video.model';
+import {Category as CategoryNeo4j} from '../../models/neo4j.models/category.neo4j.model';
+import { ProductRecommendation } from '../../models/product.recommendation.model';
 
 /**
  * The customers service.
@@ -443,33 +452,57 @@ export class CustomersService {
 
     public async getVendorsProductInformation(vendorToProductId: number): Promise<ProductInformation>{
         let connection: Sequelize = await this.intializeMSSQL();
+        let driver = await this.initializeNeo4j();
+        let session = driver.session();
 
         try{
             let vendorToProductData = await connection.models.VendorToProduct.findOne({where: {vendorToProductId: vendorToProductId}});
 
             if (vendorToProductData == null){
                 await connection.close();
+                await session.close();
                 throw new Error(`Vendor's product with ID ${vendorToProductId} does not exist!`);
             }
 
             let vendorToProductDataConverted = vendorToProductData.dataValues as VendorToProduct;
             let productData = await connection.models.Product.findOne({where: {productId: vendorToProductDataConverted.productId}});
             let productDataConverted = productData.dataValues as Product;
-            let categories = await connection.query("select c.* from ProductToCategory pc " +
-                "left outer join Category c " +
-                  "on pc.CategoryId = c.CategoryId " +
-                  `where pc.ProductId = ${productDataConverted.productId}`);
-            let categoriesConverted: Category[] = categories[0].map(function(v){
-                return {categoryId: v["CategoryId"], name: v["Name"]} as Category;
+            let categories = await session.executeRead(tx => tx.run(
+                "MATCH (c)<-[r:HAS_CATEGORY]-(p:Product{ProductId: $productId}) return c"
+            , {productId: productDataConverted.productId}));
+
+            let categoriesConverted: Category[] = categories.records.map(function(v){
+                let category = v.get("c") as CategoryNeo4j;
+                return {categoryId: Number(category.properties.CategoryId), name: category.properties.Name} as Category;
             });
+
+            // Fetch the image and video
+            let images = await this.getProductImages(vendorToProductId);
+            let videos = await this.getProductVideos(vendorToProductId);
+            let image = null;
+            let video = null;
+
+            if (images.length > 0){
+                image = images[0].imageContent;
+            }
+
+            if (videos.length > 0){
+                video = videos[0].videoContent;
+            }
+
             let result = {productId: productDataConverted.productId, name: productDataConverted.name,
                 description: productDataConverted.description, unitPriceEuro: vendorToProductDataConverted.unitPriceEuro,
-                inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted
+                inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted,
+                productImage: image, productVideo: video
             } as ProductInformation;
+
+            await connection.close();
+            await session.close();
             return result;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
@@ -1309,6 +1342,79 @@ export class CustomersService {
         } 
     }
 
+    public async getProductImages(vendorToProductId: number): Promise<Array<ProductImage>>{
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let database = connection.connection.db;
+        mongoose.mongo.GridFSBucket
+        let bucket = new mongoose.mongo.GridFSBucket(database, {bucketName: process.env.IMAGES_BUCKET_NAME});
+        let ProductImage = mongoose.model<IProductImage>("ProductImage", productImageSchema, "ProductImage");
+
+        try{
+            let images = await ProductImage.find({ vendorToProductId: vendorToProductId });
+            let result: ProductImage[] = [];
+    
+            // For each document, read the file from GridFS and convert to base64.
+            for (let image of images) {
+            let base64Content = await this.getFileBase64(image.imageContent, bucket);
+            result.push({
+                pictureId: image.pictureId,
+                vendorToProductId: image.vendorToProductId,
+                imageContent: base64Content,
+            } as ProductImage);
+            }
+
+            await mongoose.disconnect()
+            return result;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public async getProductVideos(vendorToProductId: number): Promise<Array<ProductVideo>>{
+        let connection = await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let database = connection.connection.db;
+        mongoose.mongo.GridFSBucket
+        let bucket = new mongoose.mongo.GridFSBucket(database, {bucketName: process.env.VIDEOS_BUCKET_NAME});
+        let ProductVideo = mongoose.model<IProductVideo>("ProductVideo", productVideoSchema, "ProductVideo");
+
+        try{
+            let videos = await ProductVideo.find({ vendorToProductId: vendorToProductId });
+            let result: ProductVideo[] = [];
+    
+            for (let video of videos) {
+            let base64Content = await this.getFileBase64(video.videoContent, bucket);
+            result.push({
+                videoId: video.videoId,
+                vendorToProductId: video.vendorToProductId,
+                videoContent: base64Content,
+            } as ProductVideo);
+            }
+
+            await mongoose.disconnect()
+            return result;
+        }
+        catch (err){
+            await mongoose.disconnect();
+            throw err;
+        } 
+    }
+
+    public getFileBase64(fileId: mongoose.Types.ObjectId, bucket): Promise<string> {
+        return new Promise((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          bucket
+            .openDownloadStream(fileId)
+            .on("data", (chunk) => chunks.push(chunk))
+            .on("error", (err) => reject(err))
+            .on("end", () => {
+              const buffer = Buffer.concat(chunks);
+              resolve(buffer.toString("base64"));
+            });
+        });
+    }
+
     public async deleteMongoDBEntryByAttribute(mongooseModel: mongoose.Model<any>, attributeName: string, attributeValue): Promise<void>{
         await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
 
@@ -1370,6 +1476,30 @@ export class CustomersService {
         catch (err){
             await connection.close();
             await session.close();
+            throw err;
+        } 
+    }
+
+    public async getProductRecommendations(customerId: number): Promise<ProductRecommendation[]>{
+        await mongoose.connect(process.env.MONGODB_URI, {dbName: process.env.MONGODB_DATABASE});
+        let ProductRecommendation = mongoose.model<IProductRecommendation>("ProductRecommendation", recommendationSchema, "ProductRecommendation");
+
+        try{
+            // Fetch the recommendations
+            let recommendations = await ProductRecommendation.find({customerId: customerId});
+            let result = recommendations.map(function(r){
+                let toReturn = {recommendationId: r.recommendationId, customerId: r.customerId,
+                    vendorToProductId: r.vendorToProductId, purchaseProbability: r.purchaseProbability,
+                    recommendationDate: r.recommendationDate
+                } as ProductRecommendation;
+                return toReturn;
+            });
+
+            await mongoose.disconnect();
+            return result;
+        }
+        catch (err){
+            await mongoose.disconnect();
             throw err;
         } 
     }

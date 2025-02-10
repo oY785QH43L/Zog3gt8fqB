@@ -441,10 +441,14 @@ export class VendorsService {
                 inventoryLevel: vendorToProductDataConverted.inventoryLevel, categories: categoriesConverted,
                 productImage: image, productVideo: video
             } as ProductInformation;
+
+            await connection.close();
+            await session.close();
             return result;
         }
         catch (err){
             await connection.close();
+            await session.close();
             throw err;
         }  
     }
