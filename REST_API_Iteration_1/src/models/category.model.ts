@@ -1,4 +1,7 @@
-export interface Category{
+/**
+ * The category.
+ */
+export interface Category {
     categoryId: number;
     name: string;
 }

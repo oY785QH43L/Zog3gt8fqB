@@ -1,7 +1,5 @@
 import { injectable } from 'inversify';
 import 'reflect-metadata';
-import { DataTypes, Sequelize } from "sequelize";
-import { Customer } from '../../models/customer.model';
 import { CreateCustomerRequestBody } from '../../models/request.bodies/customer.request.bodies/create.customer.request.body/create.customer.request.body';
 import { CreateCustomerAddressRequestBody } from '../../models/request.bodies/customer.request.bodies/create.customer.request.body/create.customer.address.request.body';
 import { LoginCustomerRequestBody } from '../../models/request.bodies/customer.request.bodies/login.customer.request.body';
@@ -30,591 +28,699 @@ import { RemoveSupplierAddressRequestBody } from '../../models/request.bodies/ad
 import { CreateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/create.category.request.body';
 import { UpdateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/update.category.request.body';
 
-/**
- * The customers service.
- */
 @injectable()
+/**
+ * The request body validation service.
+ */
 export class RequestBodyValidationService {
-    public validateCreateCustomerRequestBody(body: CreateCustomerRequestBody){
-        if (body.firstName === undefined || body.firstName === null || body.firstName.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateCustomerRequestBody(body: CreateCustomerRequestBody) {
+        if (body.firstName === undefined || body.firstName === null || body.firstName.length == 0) {
             throw new Error("Property firstName cannot be empty!");
         }
 
-        if (body.lastName === undefined || body.lastName === null || body.lastName.length == 0){
+        if (body.lastName === undefined || body.lastName === null || body.lastName.length == 0) {
             throw new Error("Property lastName cannot be empty!");
         }
 
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
 
-        if (body.addresses.length == 0){
+        if (body.addresses.length == 0) {
             return;
         }
 
-        for (let address of body.addresses){
+        for (let address of body.addresses) {
             this.validateCreateAddressRequestBody(address);
         }
     }
 
-    public validateCreateAddressRequestBody(body: CreateCustomerAddressRequestBody){
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateAddressRequestBody(body: CreateCustomerAddressRequestBody) {
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateLoginRequestBody(body: LoginCustomerRequestBody){
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateLoginRequestBody(body: LoginCustomerRequestBody) {
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
     }
 
-    public validateUpdateCustomerRequestBody(body: UpdateCustomerRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateCustomerRequestBody(body: UpdateCustomerRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.firstName === undefined || body.firstName === null || body.firstName.length == 0){
+        if (body.firstName === undefined || body.firstName === null || body.firstName.length == 0) {
             throw new Error("Property firstName cannot be empty!");
         }
 
-        if (body.lastName === undefined || body.lastName === null || body.lastName.length == 0){
+        if (body.lastName === undefined || body.lastName === null || body.lastName.length == 0) {
             throw new Error("Property lastName cannot be empty!");
         }
 
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
     }
 
-    public validateAddCustomerAddressRequestBody(body: AddCustomerAddressRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateAddCustomerAddressRequestBody(body: AddCustomerAddressRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateUpdateCustomerAddressRequestBody(body: UpdateCustomerAddressRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateCustomerAddressRequestBody(body: UpdateCustomerAddressRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.addressId === undefined || body.addressId === null){
+        if (body.addressId === undefined || body.addressId === null) {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateAddProductToCartRequestBody(body: AddProductToCartRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateAddProductToCartRequestBody(body: AddProductToCartRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null) {
             throw new Error("Property vendorToProductId cannot be empty!");
         }
 
-        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null) {
             throw new Error("Property shoppingCartId cannot be empty!");
         }
 
-        if (body.amount === undefined || body.amount === null){
+        if (body.amount === undefined || body.amount === null) {
             throw new Error("Property shoppingCartId cannot be empty!");
         }
 
-        if (Number(body.amount) <= 0){
+        if (Number(body.amount) <= 0) {
             throw new Error("Property amount cannot be 0 or negative!");
         }
     }
 
-    public validateRemoveProductFromCartRequestBody(body: RemoveProductFromCartRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateRemoveProductFromCartRequestBody(body: RemoveProductFromCartRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null) {
             throw new Error("Property vendorToProductId cannot be empty!");
         }
 
-        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null) {
             throw new Error("Property shoppingCartId cannot be empty!");
         }
 
-        if (body.amount === undefined || body.amount === null){
+        if (body.amount === undefined || body.amount === null) {
             throw new Error("Property shoppingCartId cannot be empty!");
         }
 
-        if (Number(body.amount) <= 0){
+        if (Number(body.amount) <= 0) {
             throw new Error("Property amount cannot be 0 or negative!");
         }
     }
 
-    public validateMakeOrderRequestBody(body: MakeOrderRequestBody){
-        if (body.customerId === undefined || body.customerId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateMakeOrderRequestBody(body: MakeOrderRequestBody) {
+        if (body.customerId === undefined || body.customerId === null) {
             throw new Error("Property customerId cannot be empty!");
         }
 
-        if (body.shoppingCartId === undefined || body.shoppingCartId === null){
+        if (body.shoppingCartId === undefined || body.shoppingCartId === null) {
             throw new Error("Property shoppingCartId cannot be empty!");
         }
 
-        if (body.billingAddressId === undefined || body.billingAddressId === null){
+        if (body.billingAddressId === undefined || body.billingAddressId === null) {
             throw new Error("Property billingAddressId cannot be empty!");
         }
 
-        if (body.supplierCompanyId === undefined || body.supplierCompanyId === null){
+        if (body.supplierCompanyId === undefined || body.supplierCompanyId === null) {
             throw new Error("Property supplierCompanyId cannot be empty!");
         }
     }
 
-    public validateCreateVendorRequestBody(body: CreateVendorRequestBody){
-        if (body.name === undefined || body.name === null || body.name.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateVendorRequestBody(body: CreateVendorRequestBody) {
+        if (body.name === undefined || body.name === null || body.name.length == 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
 
-        if (body.addresses.length == 0){
+        if (body.addresses.length == 0) {
             return;
         }
 
-        for (let address of body.addresses){
+        for (let address of body.addresses) {
             this.validateCreateVendorAddressRequestBody(address);
         }
     }
 
-    public validateCreateVendorAddressRequestBody(body: CreateVendorAddressRequestBody){
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateVendorAddressRequestBody(body: CreateVendorAddressRequestBody) {
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateVendorLoginRequestBody(body: LoginVendorRequestBody){
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateVendorLoginRequestBody(body: LoginVendorRequestBody) {
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
     }
 
-    public validateUpdateVendorRequestBody(body: UpdateVendorRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateVendorRequestBody(body: UpdateVendorRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.name === undefined || body.name === null || body.name.length == 0){
+        if (body.name === undefined || body.name === null || body.name.length == 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.userName === undefined || body.userName === null || body.userName.length == 0){
+        if (body.userName === undefined || body.userName === null || body.userName.length == 0) {
             throw new Error("Property userName cannot be empty!");
         }
 
-        if (body.password === undefined || body.password === null || body.password.length == 0){
+        if (body.password === undefined || body.password === null || body.password.length == 0) {
             throw new Error("Property password cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
     }
 
-    public validateAddVendorAddressRequestBody(body: AddVendorAddressRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateAddVendorAddressRequestBody(body: AddVendorAddressRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateUpdateVendorAddressRequestBody(body: UpdateVendorAddressRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateVendorAddressRequestBody(body: UpdateVendorAddressRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.addressId === undefined || body.addressId === null){
+        if (body.addressId === undefined || body.addressId === null) {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateCreateVendorProductRequestBody(body: CreateVendorProductRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateVendorProductRequestBody(body: CreateVendorProductRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.unitPriceEuro === undefined || body.unitPriceEuro === null){
+        if (body.unitPriceEuro === undefined || body.unitPriceEuro === null) {
             throw new Error("Property unitPriceEuro cannot be empty!");
         }
 
-        if (body.unitPriceEuro <= 0){
+        if (body.unitPriceEuro <= 0) {
             throw new Error("Property unitPriceEuro cannot be less or equal to 0!");
         }
 
-        if (body.inventoryLevel === undefined || body.inventoryLevel === null){
+        if (body.inventoryLevel === undefined || body.inventoryLevel === null) {
             throw new Error("Property unitPriceEuro cannot be empty!");
         }
 
-        if (body.inventoryLevel < 0){
+        if (body.inventoryLevel < 0) {
             throw new Error("Property inventoryLevel cannot be less than 0!");
-        }   
-        
-        if (body.name === undefined || body.name === null || body.name.length === 0){
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length === 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.description === undefined || body.description === null || body.description.length === 0){
+        if (body.description === undefined || body.description === null || body.description.length === 0) {
             throw new Error("Property description cannot be empty!");
         }
 
-        for (let el of body.categories){
-            if (el.categoryId === undefined || el.categoryId === null){
+        for (let el of body.categories) {
+            if (el.categoryId === undefined || el.categoryId === null) {
                 throw new Error("Property categoryId cannot be empty!");
             }
         }
     }
 
-    public validateUpdateVendorProductRequestBody(body: UpdateVendorProductRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateVendorProductRequestBody(body: UpdateVendorProductRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.unitPriceEuro === undefined || body.unitPriceEuro === null){
+        if (body.unitPriceEuro === undefined || body.unitPriceEuro === null) {
             throw new Error("Property unitPriceEuro cannot be empty!");
         }
 
-        if (body.unitPriceEuro <= 0){
+        if (body.unitPriceEuro <= 0) {
             throw new Error("Property unitPriceEuro cannot be less or equal to 0!");
         }
 
-        if (body.inventoryLevel === undefined || body.inventoryLevel === null){
+        if (body.inventoryLevel === undefined || body.inventoryLevel === null) {
             throw new Error("Property unitPriceEuro cannot be empty!");
         }
 
-        if (body.inventoryLevel < 0){
+        if (body.inventoryLevel < 0) {
             throw new Error("Property inventoryLevel cannot be less than 0!");
-        }   
-        
-        if (body.name === undefined || body.name === null || body.name.length === 0){
+        }
+
+        if (body.name === undefined || body.name === null || body.name.length === 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.description === undefined || body.description === null || body.description.length === 0){
+        if (body.description === undefined || body.description === null || body.description.length === 0) {
             throw new Error("Property description cannot be empty!");
         }
     }
 
-    public validateAddCategoryRequestBody(body: AddCategoryRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateAddCategoryRequestBody(body: AddCategoryRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null) {
             throw new Error("Property vendorToProductId cannot be empty!");
         }
 
-        if (body.categoryId === undefined || body.categoryId === null){
+        if (body.categoryId === undefined || body.categoryId === null) {
             throw new Error("Property categoryId cannot be empty!");
         }
     }
 
-    public validateRemoveCategoryRequestBody(body: RemoveCategoryRequestBody){
-        if (body.vendorId === undefined || body.vendorId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateRemoveCategoryRequestBody(body: RemoveCategoryRequestBody) {
+        if (body.vendorId === undefined || body.vendorId === null) {
             throw new Error("Property vendorId cannot be empty!");
         }
 
-        if (body.vendorToProductId === undefined || body.vendorToProductId === null){
+        if (body.vendorToProductId === undefined || body.vendorToProductId === null) {
             throw new Error("Property vendorToProductId cannot be empty!");
         }
 
-        if (body.categoryId === undefined || body.categoryId === null){
+        if (body.categoryId === undefined || body.categoryId === null) {
             throw new Error("Property categoryId cannot be empty!");
         }
     }
 
-    public validateCreateSupplierRequestBody(body: CreateSupplierRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateSupplierRequestBody(body: CreateSupplierRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.name === undefined || body.name === null || body.name.length == 0){
+        if (body.name === undefined || body.name === null || body.name.length == 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
 
-        if (body.addresses.length == 0){
+        if (body.addresses.length == 0) {
             return;
         }
 
-        for (let address of body.addresses){
+        for (let address of body.addresses) {
             this.validateCreateSupplierAddressRequestBody(address);
         }
     }
 
-    public validateCreateSupplierAddressRequestBody(body: CreateSupplierAddressRequestBody){
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateSupplierAddressRequestBody(body: CreateSupplierAddressRequestBody) {
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateUpdateSupplierRequestBody(body: UpdateSupplierRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateSupplierRequestBody(body: UpdateSupplierRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.name === undefined || body.name === null || body.name.length == 0){
+        if (body.name === undefined || body.name === null || body.name.length == 0) {
             throw new Error("Property name cannot be empty!");
         }
 
-        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0){
+        if (body.phoneNumber === undefined || body.phoneNumber === null || body.phoneNumber.length == 0) {
             throw new Error("Property phoneNumber cannot be empty!");
         }
 
-        if (body.email === undefined || body.email === null || body.email.length == 0){
+        if (body.email === undefined || body.email === null || body.email.length == 0) {
             throw new Error("Property email cannot be empty!");
         }
     }
 
-    public validateAddSupplierAddressRequestBody(body: AddSupplierAddressRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateAddSupplierAddressRequestBody(body: AddSupplierAddressRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null){
+        if (body.supplierId === undefined || body.supplierId === null) {
             throw new Error("Property supplierId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateUpdateSupplierAddressRequestBody(body: UpdateSupplierAddressRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateSupplierAddressRequestBody(body: UpdateSupplierAddressRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.addressId === undefined || body.addressId === null){
+        if (body.addressId === undefined || body.addressId === null) {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null){
+        if (body.supplierId === undefined || body.supplierId === null) {
             throw new Error("Property supplierId cannot be empty!");
         }
 
-        if (body.city === undefined || body.city === null || body.city.length == 0){
+        if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
 
-        if (body.country === undefined || body.country === null || body.country.length == 0){
+        if (body.country === undefined || body.country === null || body.country.length == 0) {
             throw new Error("Property country cannot be empty!");
         }
 
-        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0){
+        if (body.postalCode === undefined || body.postalCode === null || body.postalCode.length == 0) {
             throw new Error("Property postalCode cannot be empty!");
         }
 
-        if (body.street === undefined || body.street === null || body.street.length == 0){
+        if (body.street === undefined || body.street === null || body.street.length == 0) {
             throw new Error("Property street cannot be empty!");
         }
     }
 
-    public validateRemoveSupplierAddressRequestBody(body: RemoveSupplierAddressRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateRemoveSupplierAddressRequestBody(body: RemoveSupplierAddressRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.addressId === undefined || body.addressId === null){
+        if (body.addressId === undefined || body.addressId === null) {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null){
+        if (body.supplierId === undefined || body.supplierId === null) {
             throw new Error("Property supplierId cannot be empty!");
         }
     }
 
-    public validateCreateCategoryRequestBody(body: CreateCategoryRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateCreateCategoryRequestBody(body: CreateCategoryRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.name === undefined || body.name === null || body.name.length === 0){
+        if (body.name === undefined || body.name === null || body.name.length === 0) {
             throw new Error("Property name cannot be empty!");
         }
     }
 
-    public validateUpdateCategoryRequestBody(body: UpdateCategoryRequestBody){
-        if (body.adminId === undefined || body.adminId === null){
+    /**
+     * Validates the given request body.
+     * @param body The request body.
+     */
+    public validateUpdateCategoryRequestBody(body: UpdateCategoryRequestBody) {
+        if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.categoryId === undefined || body.categoryId === null){
+        if (body.categoryId === undefined || body.categoryId === null) {
             throw new Error("Property categoryId cannot be empty!");
         }
 
-        if (body.name === undefined || body.name === null || body.name.length === 0){
+        if (body.name === undefined || body.name === null || body.name.length === 0) {
             throw new Error("Property name cannot be empty!");
         }
     }

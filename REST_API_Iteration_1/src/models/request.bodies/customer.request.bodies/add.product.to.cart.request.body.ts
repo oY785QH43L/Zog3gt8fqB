@@ -1,4 +1,7 @@
-export interface AddProductToCartRequestBody{
+/**
+ * The add product to cart request body.
+ */
+export interface AddProductToCartRequestBody {
     customerId: number;
     vendorToProductId: number;
     shoppingCartId: number;

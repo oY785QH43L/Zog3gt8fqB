@@ -1,4 +1,7 @@
-export interface OrderPosition{
+/**
+ * The order position.
+ */
+export interface OrderPosition {
     orderPositionId: number;
     orderId: number;
     amount: number;

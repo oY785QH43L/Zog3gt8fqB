@@ -13,11 +13,14 @@ import { VendorsService } from '../services/vendors.service';
 import { VendorsSessionService } from '../services/vendors.session.service';
 import { AdminService } from '../services/admin.service';
 import { AdminController } from '../../api/admin.controller';
+import { MssqlDatabaseService } from '../services/mssql.database.service';
+import { ProductsService } from '../services/products.service';
+import { AddressService } from '../services/address.service';
 
 /**
  * The IoC container.
  */
-export class IoContainer{
+export class IoContainer {
     /**
      * The container variable.
      */
@@ -26,7 +29,7 @@ export class IoContainer{
     /**
      * Initializes the IoC container.
      */
-    public init(): void{
+    public init(): void {
         this.initServices();
         this.initControllers();
     }
@@ -35,14 +38,14 @@ export class IoContainer{
      * Returns the IoC container.
      * @returns The IoC container.
      */
-    public getContainer(): Container{
+    public getContainer(): Container {
         return this.container;
     }
 
     /**
      * Initializes the controllers.
      */
-    private initControllers(): void{
+    private initControllers(): void {
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(CustomersController).whenTargetNamed(CustomersController.name);
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(VendorsController).whenTargetNamed(VendorsController.name);
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(AdminController).whenTargetNamed(AdminController.name);
@@ -51,8 +54,11 @@ export class IoContainer{
     /**
      * Initializes the services.
      */
-    private initServices(): void{
+    private initServices(): void {
         this.container.bind<LoggerService>(LoggerService.name).to(LoggerService).inSingletonScope();
+        this.container.bind<ProductsService>(ProductsService.name).to(ProductsService).inSingletonScope();
+        this.container.bind<AddressService>(AddressService.name).to(AddressService).inSingletonScope();
+        this.container.bind<MssqlDatabaseService>(MssqlDatabaseService.name).to(MssqlDatabaseService).inSingletonScope();
         this.container.bind<CustomersService>(CustomersService.name).to(CustomersService).inSingletonScope();
         this.container.bind<VendorsService>(VendorsService.name).to(VendorsService).inSingletonScope();
         this.container.bind<AdminService>(AdminService.name).to(AdminService).inSingletonScope();

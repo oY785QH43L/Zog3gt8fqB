@@ -1,6 +1,9 @@
 import { Address } from "./address.model";
 
-export interface VendorInformation{
+/**
+ * The vendor information.
+ */
+export interface VendorInformation {
     vendorId: number;
     name: string;
     userName: string;

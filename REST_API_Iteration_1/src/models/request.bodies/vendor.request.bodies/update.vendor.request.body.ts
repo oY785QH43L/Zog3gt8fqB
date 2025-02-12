@@ -1,4 +1,7 @@
-export interface UpdateVendorRequestBody{
+/**
+ * The update vendor request body.
+ */
+export interface UpdateVendorRequestBody {
     vendorId: number;
     userName: string;
     name: string;

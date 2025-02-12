@@ -1,4 +1,7 @@
-export interface Vendor{
+/**
+ * The vendor.
+ */
+export interface Vendor {
     vendorId: number;
     name: string;
     email: string;

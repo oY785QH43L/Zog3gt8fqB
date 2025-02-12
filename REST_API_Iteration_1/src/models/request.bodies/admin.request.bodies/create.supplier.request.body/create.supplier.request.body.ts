@@ -1,6 +1,9 @@
 import { CreateSupplierAddressRequestBody } from "./create.supplier.address.request.body";
 
-export interface CreateSupplierRequestBody{
+/**
+ * The create supplier request body.
+ */
+export interface CreateSupplierRequestBody {
     adminId: number;
     name: string;
     email: string;

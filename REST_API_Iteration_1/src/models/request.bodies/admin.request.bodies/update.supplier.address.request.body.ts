@@ -1,4 +1,7 @@
-export interface UpdateSupplierAddressRequestBody{
+/**
+ * The update supplier address request body.
+ */
+export interface UpdateSupplierAddressRequestBody {
     adminId: number,
     supplierId: number,
     addressId: number,

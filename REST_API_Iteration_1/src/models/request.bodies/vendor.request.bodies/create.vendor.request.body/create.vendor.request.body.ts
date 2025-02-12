@@ -1,6 +1,9 @@
 import { CreateVendorAddressRequestBody } from "./create.vendor.address.request.body";
 
-export interface CreateVendorRequestBody{
+/**
+ * The create vendor request body.
+ */
+export interface CreateVendorRequestBody {
     userName: string;
     name: string;
     email: string;
