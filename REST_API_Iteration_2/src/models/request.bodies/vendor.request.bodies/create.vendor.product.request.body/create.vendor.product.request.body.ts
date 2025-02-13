@@ -1,6 +1,9 @@
 import { AddVendorProductCategoryRequestBody } from "./add.vendor.product.category.request.body";
 
-export interface CreateVendorProductRequestBody{
+/**
+ * The create vendor product request body.
+ */
+export interface CreateVendorProductRequestBody {
     vendorId: number;
     unitPriceEuro: number;
     inventoryLevel: number;

@@ -1,4 +1,7 @@
-export interface UpdateVendorAddressRequestBody{
+/**
+ * The update vendor address request body.
+ */
+export interface UpdateVendorAddressRequestBody {
     vendorId: number,
     addressId: number,
     street: string,

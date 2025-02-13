@@ -1,4 +1,7 @@
-export interface ProductRecommendation{
+/**
+ * The product information.
+ */
+export interface ProductRecommendation {
     recommendationId: number;
     customerId: number;
     vendorToProductId: number;

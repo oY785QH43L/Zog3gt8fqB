@@ -1,24 +1,33 @@
+import 'reflect-metadata';
 import { Container } from 'inversify';
 import { LoggerService } from '../services/logger.service';
-import 'reflect-metadata';
+import { MssqlDatabaseService } from '../services/mssql.database.service';
+import { Neo4jDatabaseService } from '../services/neo4j.database.service';
+import { MongoDbDatabaseService } from '../services/mongodb.database.service';
+import { RedisDatabaseService } from '../services/redis.database.service';
 import { interfaces, TYPE } from 'inversify-express-utils';
 import { CustomersController } from '../../api/customers.controller';
 import { CustomersService } from '../services/customers.service';
 import { CustomersSessionService } from '../services/customers.sessions.service';
 import { HashingService } from '../services/hashing.service';
 import { RequestBodyValidationService } from '../services/request.body.validation.service';
-import { RedisDatabaseService } from '../services/redis.database.service';
 import { VendorsController } from '../../api/vendors.controller';
 import { VendorsService } from '../services/vendors.service';
 import { VendorsSessionService } from '../services/vendors.session.service';
 import { AdminService } from '../services/admin.service';
 import { AdminController } from '../../api/admin.controller';
 import { FormDataConversionService } from '../services/form.data.conversion.service';
+import { AddressService } from '../services/address.service';
+import { CategoriesService } from '../services/categories.service';
+import { ProductRecommendationService } from '../services/product.recommendation.service';
+import { ReviewsService } from '../services/reviews.service';
+import { CustomerActionsService } from '../services/customer.actions.service';
+import { ProductsService } from '../services/products.service';
 
 /**
  * The IoC container.
  */
-export class IoContainer{
+export class IoContainer {
     /**
      * The container variable.
      */
@@ -27,7 +36,7 @@ export class IoContainer{
     /**
      * Initializes the IoC container.
      */
-    public init(): void{
+    public init(): void {
         this.initServices();
         this.initControllers();
     }
@@ -36,14 +45,14 @@ export class IoContainer{
      * Returns the IoC container.
      * @returns The IoC container.
      */
-    public getContainer(): Container{
+    public getContainer(): Container {
         return this.container;
     }
 
     /**
      * Initializes the controllers.
      */
-    private initControllers(): void{
+    private initControllers(): void {
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(CustomersController).whenTargetNamed(CustomersController.name);
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(VendorsController).whenTargetNamed(VendorsController.name);
         this.container.bind<interfaces.Controller>(TYPE.Controller).to(AdminController).whenTargetNamed(AdminController.name);
@@ -52,16 +61,25 @@ export class IoContainer{
     /**
      * Initializes the services.
      */
-    private initServices(): void{
+    private initServices(): void {
         this.container.bind<LoggerService>(LoggerService.name).to(LoggerService).inSingletonScope();
-        this.container.bind<CustomersService>(CustomersService.name).to(CustomersService).inSingletonScope();
-        this.container.bind<VendorsService>(VendorsService.name).to(VendorsService).inSingletonScope();
-        this.container.bind<AdminService>(AdminService.name).to(AdminService).inSingletonScope();
+        this.container.bind<Neo4jDatabaseService>(Neo4jDatabaseService.name).to(Neo4jDatabaseService).inSingletonScope();
+        this.container.bind<MssqlDatabaseService>(MssqlDatabaseService.name).to(MssqlDatabaseService).inSingletonScope();
+        this.container.bind<MongoDbDatabaseService>(MongoDbDatabaseService.name).to(MongoDbDatabaseService).inSingletonScope();
+        this.container.bind<RedisDatabaseService>(RedisDatabaseService.name).to(RedisDatabaseService).inSingletonScope();
+        this.container.bind<AddressService>(AddressService.name).to(AddressService).inSingletonScope();
+        this.container.bind<CategoriesService>(CategoriesService.name).to(CategoriesService).inSingletonScope();
+        this.container.bind<ProductRecommendationService>(ProductRecommendationService.name).to(ProductRecommendationService).inSingletonScope();
+        this.container.bind<ReviewsService>(ReviewsService.name).to(ReviewsService).inRequestScope();
+        this.container.bind<CustomerActionsService>(CustomerActionsService.name).to(CustomerActionsService).inSingletonScope();
         this.container.bind<CustomersSessionService>(CustomersSessionService.name).to(CustomersSessionService).inSingletonScope();
         this.container.bind<VendorsSessionService>(VendorsSessionService.name).to(VendorsSessionService).inSingletonScope();
         this.container.bind<HashingService>(HashingService.name).to(HashingService).inSingletonScope();
         this.container.bind<RequestBodyValidationService>(RequestBodyValidationService.name).to(RequestBodyValidationService).inSingletonScope();
-        this.container.bind<RedisDatabaseService>(RedisDatabaseService.name).to(RedisDatabaseService).inSingletonScope();
         this.container.bind<FormDataConversionService>(FormDataConversionService.name).to(FormDataConversionService).inSingletonScope();
+        this.container.bind<ProductsService>(ProductsService.name).to(ProductsService).inSingletonScope();
+        this.container.bind<AdminService>(AdminService.name).to(AdminService).inSingletonScope();
+        this.container.bind<CustomersService>(CustomersService.name).to(CustomersService).inSingletonScope();
+        this.container.bind<VendorsService>(VendorsService.name).to(VendorsService).inSingletonScope();
     }
 }

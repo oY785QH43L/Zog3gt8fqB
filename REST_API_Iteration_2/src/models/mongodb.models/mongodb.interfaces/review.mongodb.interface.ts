@@ -1,4 +1,7 @@
-export interface IReview{
+/**
+ * The review interface (MongoDB).
+ */
+export interface IReview {
     reviewId: number;
     customerId: number;
     vendorToProductId: number;

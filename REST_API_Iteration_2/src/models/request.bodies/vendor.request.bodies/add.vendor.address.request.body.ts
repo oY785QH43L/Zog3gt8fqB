@@ -1,4 +1,7 @@
-export interface AddVendorAddressRequestBody{
+/**
+ * The add vendor address request body.
+ */
+export interface AddVendorAddressRequestBody {
     vendorId: number,
     street: string,
     city: string,

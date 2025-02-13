@@ -101,6 +101,7 @@ export class AdminService {
 
             if (existingAddress !== null) {
                 let createdReference = await this.createNewSupplierAddressReference(existingAddress.dataValues as Address, supplier);
+                await connection.close();
                 return existingAddress.dataValues as Address;
             }
 
@@ -352,7 +353,6 @@ export class AdminService {
             await connection.models.Address.destroy({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Deleted Address with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService");
             await connection.close();
-            return;
         }
         catch (err) {
             await connection.close();
@@ -383,7 +383,7 @@ export class AdminService {
 
             if (foundCategoryByName !== null) {
                 await connection.close();
-                this.loggerService.logError(`Category with name '${category.name}' already exists!`, "AdminService");
+                this.loggerService.logError(`Category with name '${category.name}' already exists.`, "AdminService");
                 throw new Error(`Category with name '${category.name}' already exists!`);
             }
 

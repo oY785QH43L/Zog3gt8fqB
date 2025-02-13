@@ -1,4 +1,7 @@
-export interface CreateReviewRequestBody{
+/**
+ * The create review request body.
+ */
+export interface CreateReviewRequestBody {
     customerId: number;
     vendorToProductId: number;
     reviewText: string;

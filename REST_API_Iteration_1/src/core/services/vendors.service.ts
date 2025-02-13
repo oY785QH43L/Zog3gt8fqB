@@ -174,7 +174,6 @@ export class VendorsService {
             if (vendor.vendorId !== vendorId) {
                 await connection.close();
                 this.loggerService.logError(`IDs '${vendorId}' and '${vendor.vendorId}' do not match.`, "VendorsService");
-
                 throw new Error(`IDs '${vendorId}' and '${vendor.vendorId}' do not match!`)
             }
 
@@ -184,7 +183,6 @@ export class VendorsService {
             if (foundVendor == null) {
                 await connection.close();
                 this.loggerService.logError(`Vendor with ID '${vendor.vendorId}' does not exist.`, "VendorsService");
-
                 throw new Error(`Vendor with ID '${vendor.vendorId}' does not exist!`);
             }
 
@@ -303,7 +301,6 @@ export class VendorsService {
             await connection.models.Address.destroy({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Deleted Address with data ${JSON.stringify({ addressId: addressId })}.`, "VendorsService");
             await connection.close();
-            return;
         }
         catch (err) {
             await connection.close();
@@ -485,6 +482,7 @@ export class VendorsService {
             let existingProduct = vendorProducts.find((p) => p.name == productInformation.name);
 
             if (existingProduct !== undefined) {
+                await connection.close();
                 this.loggerService.logError(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}'.`, "VendorsService");
                 throw new Error(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}'!`);
             }
@@ -616,7 +614,7 @@ export class VendorsService {
                 await connection.models.Product.create(productData as any);
                 this.loggerService.logInfo(`Created Product with ID '${newProductId}'.`, "VendorsService");
                 let updateData = { productId: newProductId, unitPriceEuro: informationToUpdate.unitPriceEuro, inventoryLevel: informationToUpdate.inventoryLevel };
-                await connection.models.VendorToProduct.update(updateData, { where: { vendorToProductId: vendorToProductId } })
+                await connection.models.VendorToProduct.update(updateData, { where: { vendorToProductId: vendorToProductId } });
                 this.loggerService.logInfo(`VendorToProduct with ID '${vendorToProductId}' was updated.`, "VendorsService");
             }
 

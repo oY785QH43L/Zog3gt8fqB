@@ -1,4 +1,7 @@
-export interface CustomerOrder{
+/**
+ * The customer order.
+ */
+export interface CustomerOrder {
     orderId: number;
     orderName: string;
     orderDate: Date;

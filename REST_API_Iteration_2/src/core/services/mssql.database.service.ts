@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { DataTypes, Sequelize } from 'sequelize';
 import { LoggerService } from './logger.service';
@@ -132,35 +133,6 @@ export class MssqlDatabaseService {
                 {
                     tableName: "Vendor",
                     modelName: "Vendor",
-                    createdAt: false,
-                    updatedAt: false
-                }
-            );
-
-            sequelize.define("ProductToCart",
-                {
-                    productToCartId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false,
-                        primaryKey: true
-
-                    },
-                    vendorToProductId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    cartId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    amount: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    }
-                },
-                {
-                    tableName: "ProductToCart",
-                    modelName: "ProductToCart",
                     createdAt: false,
                     updatedAt: false
                 }
@@ -440,31 +412,6 @@ export class MssqlDatabaseService {
                 {
                     tableName: "Supplier",
                     modelName: "Supplier",
-                    createdAt: false,
-                    updatedAt: false
-                }
-            );
-
-            sequelize.define("ProductToCategory",
-                {
-                    productToCategoryId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false,
-                        primaryKey: true
-
-                    },
-                    productId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    },
-                    categoryId: {
-                        type: DataTypes.INTEGER,
-                        allowNull: false
-                    }
-                },
-                {
-                    tableName: "ProductToCategory",
-                    modelName: "ProductToCategory",
                     createdAt: false,
                     updatedAt: false
                 }

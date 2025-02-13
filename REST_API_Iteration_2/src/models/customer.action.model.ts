@@ -1,4 +1,7 @@
-export interface CustomerAction{
+/**
+ * The customer action.
+ */
+export interface CustomerAction {
     customerActionId: number;
     customerId: number;
     vendorToProductId: number;

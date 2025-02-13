@@ -1,6 +1,9 @@
 import { CreateCustomerAddressRequestBody } from "./create.customer.address.request.body";
 
-export interface CreateCustomerRequestBody{
+/**
+ * The create customer request body.
+ */
+export interface CreateCustomerRequestBody {
     userName: string;
     firstName: string;
     lastName: string;

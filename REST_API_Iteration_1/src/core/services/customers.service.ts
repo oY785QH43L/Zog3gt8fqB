@@ -401,7 +401,6 @@ export class CustomersService {
             await connection.models.Address.destroy({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Deleted Address with data ${JSON.stringify({ addressId: addressId })}.`, "CustomersService");
             await connection.close();
-            return;
         }
         catch (err) {
             await connection.close();

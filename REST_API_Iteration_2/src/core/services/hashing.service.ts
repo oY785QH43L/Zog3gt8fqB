@@ -1,12 +1,11 @@
-import { injectable } from 'inversify';
 import 'reflect-metadata';
+import { injectable } from 'inversify';
 
 @injectable()
 /**
  * The hashing service.
  */
 export class HashingService {
-
     /**
      * Hashes the password.
      * @param passWord The password to hash.

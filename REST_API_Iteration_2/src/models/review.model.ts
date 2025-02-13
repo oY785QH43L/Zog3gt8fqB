@@ -1,4 +1,7 @@
-export interface Review{
+/**
+ * The review.
+ */
+export interface Review {
     reviewId: number;
     customerId: number;
     vendorToProductId: number;
