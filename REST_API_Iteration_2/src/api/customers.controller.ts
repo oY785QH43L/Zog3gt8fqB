@@ -1009,7 +1009,15 @@ export class CustomersController implements interfaces.Controller {
                 return;
             }
 
+            let now = new Date();
             let fetchedReviews = await this.reviewsService.getReviews(vendorToProductId);
+            let newActionId = await this.mongoDBService.getNewId("CustomerAction", "customerActionId");
+            let action = {
+                customerActionId: newActionId, customerId: kid,
+                vendorToProductId: vendorToProductId, actionType: "view",
+                actionDate: now
+            } as CustomerAction;
+            await this.customerActionsService.createCustomerAction(action);
             response.status(200).json({ result: fetchedReviews });
         }
         catch (err) {
