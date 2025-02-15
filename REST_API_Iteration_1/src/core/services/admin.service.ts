@@ -21,7 +21,8 @@ export class AdminService {
      * @param addressService The address service.
      * @param loggerService The logger service.
      */
-    constructor(@inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
+    constructor(
+        @inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
         @inject(AddressService.name) private addressService: AddressService,
         @inject(LoggerService.name) private loggerService: LoggerService
     ) { }

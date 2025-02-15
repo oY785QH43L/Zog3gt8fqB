@@ -26,7 +26,8 @@ export class VendorsService {
      * @param productsService The products service.
      * @param loggerService The logger service.
      */
-    constructor(@inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
+    constructor(
+        @inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
         @inject(AddressService.name) private addressService: AddressService,
         @inject(ProductsService.name) private productsService: ProductsService,
         @inject(LoggerService.name) private loggerService: LoggerService

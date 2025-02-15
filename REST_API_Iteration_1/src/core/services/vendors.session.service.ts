@@ -12,7 +12,8 @@ export class VendorsSessionService {
      * @param redisDatabaseService The Redis database service.
      * @param loggerService The logger service.
      */
-    constructor(@inject(RedisDatabaseService.name) private redisDatabaseService: RedisDatabaseService,
+    constructor(
+        @inject(RedisDatabaseService.name) private redisDatabaseService: RedisDatabaseService,
         @inject(LoggerService.name) private loggerService: LoggerService) { }
 
     /**
