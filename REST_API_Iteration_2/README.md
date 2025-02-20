@@ -58,25 +58,25 @@ The file *index.ts* is the main entry of the program.
 ## Start the REST API
 1. Configure all necessary information in a *.env* file
 with the following variables and paste it into the [src](./src) folder:
-* MSSQL_DB (the MSSQL database)
-* MSSQL_USER (the MSSQL user)
-* MSSQL_PASSWORD (the MSSQL password)
-* MSSQL_HOST (the MSSQL host)
-* MSSQL_PORT (the MSSQL port)
-* REDIS_HOST (the Redis host)
-* REDIS_PORT (the Redis port)
-* SESSIONS_HASH (name of the Redis hash used to store session information)
-* ADMIN_ID (ID used to identify the administrator)
-* NEO4J_URI (URI of the Neo4j server)
-* NEO4J_USERNAME (Neo4j username)
-* NEO4J_PASSWORD (Neo4j password)
-* MONGODB_URI (URI of the MongoDB cluster)
-* MONGODB_DATABASE (the MongoDB database)
-* IMAGES_BUCKET_NAME (name of the MongoDB bucket used to store images)
-* VIDEOS_BUCKET_NAME (name of the MongoDB bucket used to store videos)
+- MSSQL_DB (the MSSQL database)
+- MSSQL_USER (the MSSQL user)
+- MSSQL_PASSWORD (the MSSQL password)
+- MSSQL_HOST (the MSSQL host)
+- MSSQL_PORT (the MSSQL port)
+- REDIS_HOST (the Redis host)
+- REDIS_PORT (the Redis port)
+- SESSIONS_HASH (name of the Redis hash used to store session information)
+- ADMIN_ID (ID used to identify the administrator)
+- NEO4J_URI (URI of the Neo4j server)
+- NEO4J_USERNAME (Neo4j username)
+- NEO4J_PASSWORD (Neo4j password)
+- MONGODB_URI (URI of the MongoDB cluster)
+- MONGODB_DATABASE (the MongoDB database)
+- IMAGES_BUCKET_NAME (name of the MongoDB bucket used to store images)
+- VIDEOS_BUCKET_NAME (name of the MongoDB bucket used to store videos)
 2. Make sure that the databases mentioned in the previous step are running.
-3. Configure other necessary information in the [config.ts](./src/config.ts) file.
+3. Configure other necessary information in the [config.ts](./src/config/config.ts) file.
 4. Navigate to the [src](./src) folder and call *ts-node index.ts* in the command line.
-5. The REST API is now running under the port specified in the [config.ts](./src/config.ts) file.
+5. The REST API is now running under the port specified in the [config.ts](./src/config/config.ts) file.
 6. You can test the API using the HTTP methods described in the controllers
 of the [api](./src/api) folder.

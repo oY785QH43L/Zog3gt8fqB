@@ -57,8 +57,8 @@ with the following variables and paste it into the [src](./src) folder:
 * SESSIONS_HASH (name of the Redis hash used to store session information)
 * ADMIN_ID (ID used to identify the administrator)
 2. Make sure that the databases mentioned in the previous step are running.
-3. Configure other necessary information in the [config.ts](./src/config.ts) file.
+3. Configure other necessary information in the [config.ts](./src/config/config.ts) file.
 4. Navigate to the [src](./src) folder and call *ts-node index.ts* in the command line.
-5. The REST API is now running under the port specified in the [config.ts](./src/config.ts) file.
+5. The REST API is now running under the port specified in the [config.ts](./src/config/config.ts) file.
 6. You can test the API using the HTTP methods described in the controllers
 of the [api](./src/api) folder.
