@@ -20,9 +20,9 @@ You also need a running *Neo4j* instance.
 Follow these steps to execute the migration script:
 
 1. Install the following Python libraries:
-* pyodbc
-* pymongo
-* neo4j
+	* pyodbc
+	* pymongo
+	* neo4j
 
 2. If you do not have an existing relational database with the e commerce model, please execute this script
 in your new database: [initial_database_sql_script.sql](./initial_database_sql_script.sql). 
