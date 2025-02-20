@@ -6,6 +6,12 @@ model to the polyglot persistence model.
 <br> The target model
 ![target](img/new_entities.png)
 
+## Prerequisites
+* Python compiler
+* Running MSSQL server
+* Runnning MongoDB cluster
+* Running Neo4j server
+
 ## Start the script
 To run the script, it is assumed that the existing relational database has already been set up. 
 If you want to run the script, you need to have a running *Microsoft SQL Server* database.
