@@ -1,7 +1,10 @@
 # Migration script
 The following document describes the the script that was used to migrate from the initial relational e commerce
 model to the polyglot persistence model.
+<br> Initial relational model
 ![ecommerce](img/ecommerce_er.png)
+<br> The target model
+![target](img/new_entities.png)
 
 ## Start the script
 To run the script, it is assumed that the existing relational database has already been set up. 
