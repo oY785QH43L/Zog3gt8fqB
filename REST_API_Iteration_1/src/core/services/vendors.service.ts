@@ -480,20 +480,20 @@ export class VendorsService {
 
             // Check for already own existing product
             let vendorProducts = await this.productsService.getVendorProducts(vendorId);
-            let existingProduct = vendorProducts.find((p) => p.name == productInformation.name);
+            let existingProduct = vendorProducts.find((p) => p.name == productInformation.name && p.description == productInformation.description);
 
             if (existingProduct !== undefined) {
                 await connection.close();
-                this.loggerService.logError(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}'.`, "VendorsService");
-                throw new Error(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}'!`);
+                this.loggerService.logError(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}' and description '${productInformation.description}'.`, "VendorsService");
+                throw new Error(`Vendor with ID '${vendorId}' already owns the product with name '${productInformation.name}' and description '${productInformation.description}'!`);
             }
 
-            // Check if other vendor owns the product with the same name
+            // Check if other vendor owns the product with the same name and description
             let otherVendorsProducts = await connection.query("select p.* from VendorToProduct vp " +
                 "left outer join Product p " +
                 "on vp.ProductId = p.ProductId " +
-                `where vp.VendorId != ${vendorId} and p.Name = '${productInformation.name}'`);
-            this.loggerService.logInfo(`Fetched products for VendorId != '${vendorId}' and Name == '${productInformation.name}'`, "VendorsService");
+                `where vp.VendorId != ${vendorId} and p.Name = '${productInformation.name}'  and p.Description like '${productInformation.description}'`);
+            this.loggerService.logInfo(`Fetched products for VendorId != '${vendorId}' and Name == '${productInformation.name}' and Description like '${productInformation.description}'.`, "VendorsService");
             let otherVendorsProductsConverted: Product[] = otherVendorsProducts[0].map(function(v) {
                 return { productId: v["ProductId"], name: v["Name"], description: v["Description"] } as Product;
             });
