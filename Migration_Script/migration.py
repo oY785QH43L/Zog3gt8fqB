@@ -345,7 +345,7 @@ neo4j_connection = {
     "Password": "strongPassword123A!",
 }
 mongodb_connection = {
-    "connectionString": "mongodb+srv://testuser:testpassword@cluster0.xi7fl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    "connectionString": "mongodb://localhost:27017"
 }
 
 # SQL Tables
