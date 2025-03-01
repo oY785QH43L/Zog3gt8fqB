@@ -644,7 +644,7 @@ export class VendorsService {
      * Removes the vendor's products.
      * @param vendorToProductIds The vendor's product IDs.
      */
-    public async removeVedorToProducts(vendorToProductIds: Array<number>): Promise<void> {
+    public async removeVendorToProducts(vendorToProductIds: Array<number>): Promise<void> {
         for (let vpId of vendorToProductIds) {
             await this.removeVendorProduct(vpId);
         }

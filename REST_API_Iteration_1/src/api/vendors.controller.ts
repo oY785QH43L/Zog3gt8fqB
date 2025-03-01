@@ -330,7 +330,7 @@ export class VendorsController implements interfaces.Controller {
                 return Number(v.dataValues["vendorToProductId"]);
             });
             await connection.close();
-            await this.vendorsService.removeVedorToProducts(idValues);
+            await this.vendorsService.removeVendorToProducts(idValues);
 
             // Delete all addresses 
             let addresses = await this.vendorsService.getVendorAddresses(vendorId);
