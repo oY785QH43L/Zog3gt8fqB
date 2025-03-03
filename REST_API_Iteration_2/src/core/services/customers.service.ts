@@ -911,12 +911,13 @@ export class CustomersService {
             sequelize.DATE.prototype._stringify = function _stringify(date, options) {
                 return this._applyTimezone(date, options).format('YYYY-MM-DD HH:mm:ss.SSS');
             };
-            let order = { orderId: orderId, orderName: null, orderDate: new Date(), customerId: cartConverted.customerId, billingAddressId: billingAddressId, isPaid: false } as CustomerOrder;
+            let orderDate = new Date();
+            let order = { orderId: orderId, orderName: null, orderDate: orderDate, customerId: cartConverted.customerId, billingAddressId: billingAddressId, isPaid: false } as CustomerOrder;
             await connection.models.CustomerOrder.create(order as any);
             this.loggerService.logInfo(`Created CustomerOrder with ID '${orderId}'.`, "CustomersService-MSSQL");
 
             for (let item of productToCartsConverted) {
-                await this.placeItem(order, item, supplierCompanyId);
+                await this.placeItem(order, item, supplierCompanyId, orderDate);
             }
 
             await connection.close();
@@ -935,8 +936,9 @@ export class CustomersService {
      * @param order The order.
      * @param orderItem The order item.
      * @param supplierCompanyId The supplier company ID.
+     * @param orderDate The order date.
      */
-    public async placeItem(order: CustomerOrder, orderItem: ProductToCart, supplierCompanyId: number): Promise<void> {
+    public async placeItem(order: CustomerOrder, orderItem: ProductToCart, supplierCompanyId: number, orderDate: Date): Promise<void> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
         await mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.MONGODB_DATABASE });
         let driver = await this.neo4jDatabaseService.initialize();
@@ -983,7 +985,7 @@ export class CustomersService {
             sequelize.DATE.prototype._stringify = function _stringify(date, options) {
                 return this._applyTimezone(date, options).format('YYYY-MM-DD HH:mm:ss.SSS');
             };
-            let date = new Date();
+            let date = orderDate;
             date.setDate(date.getDate() + 14);
             let newId = await this.mssqlDatabaseService.getNewId("OrderPosition", "OrderPositionId");
             let orderPosition = {
