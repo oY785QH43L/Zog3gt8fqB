@@ -782,7 +782,7 @@ export class VendorsController implements interfaces.Controller {
 
             let productInformation: ProductInformation[] = await this.productsService.getVendorProducts(vendorId);
             let resultObject = { result: productInformation };
-            response.status(201).json(resultObject);
+            response.status(200).json(resultObject);
         }
         catch (err) {
             response.status(500).json({ message: err.message });
