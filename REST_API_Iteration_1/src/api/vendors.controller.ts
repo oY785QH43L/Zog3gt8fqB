@@ -601,7 +601,7 @@ export class VendorsController implements interfaces.Controller {
                 categories: categories
             } as ProductInformation;
             let product = await this.vendorsService.createNewVendorProduct(createVendorProductRequestBody.vendorId, productInformation);
-            response.status(200).json({ message: "The product was successfully created!" });
+            response.status(201).json({ message: "The product was successfully created!" });
         }
         catch (err) {
             response.status(500).json({ message: err.message });
