@@ -479,7 +479,7 @@ export class AdminController implements interfaces.Controller {
             }
 
             await this.adminService.deleteCategory(categoryId);
-            response.status(201).json({ message: `The category with ID ${categoryId} was successfully deleted!` });
+            response.status(200).json({ message: `The category with ID ${categoryId} was successfully deleted!` });
         }
         catch (err) {
             response.status(500).json({ message: err.message });

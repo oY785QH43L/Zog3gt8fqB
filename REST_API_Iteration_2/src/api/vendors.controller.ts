@@ -946,7 +946,7 @@ export class VendorsController implements interfaces.Controller {
 
             await this.vendorsService.removeProductCategoryReference(referenceConverted.productId, removeCategoryRequestBody.categoryId);
             await connection.close();
-            response.status(201).json({ message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!` });
+            response.status(200).json({ message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!` });
         }
         catch (err) {
             response.status(500).json({ message: err.message });
