@@ -881,7 +881,7 @@ export class VendorsController implements interfaces.Controller {
 
             await connection.models.ProductToCategory.destroy({ where: { categoryId: removeCategoryRequestBody.categoryId, productId: referenceConverted.productId } });
             await connection.close();
-            response.status(201).json({ message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!` });
+            response.status(200).json({ message: `Category with ID ${removeCategoryRequestBody.categoryId} was successfully removed from product with ID ${referenceConverted.productId}!` });
         }
         catch (err) {
 
