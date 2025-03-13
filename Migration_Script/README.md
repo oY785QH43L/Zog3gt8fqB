@@ -1,5 +1,5 @@
 # Migration script
-The following document describes the the script that was used to migrate from the initial relational e commerce
+The following document describes the script that was used to migrate from the initial relational e commerce
 model to the polyglot persistence model.
 <br> Initial relational model
 ![ecommerce](img/ecommerce_er.png)
