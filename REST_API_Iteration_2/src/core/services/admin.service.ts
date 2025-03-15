@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Sequelize } from "sequelize";
 import { Address } from '../../models/address.model';
-import { Supplier } from '../../models/supplier.model';
-import { SupplierToAddress } from '../../models/supplier.to.address.model';
+import { Courier } from '../../models/courier.model';
+import { CourierToAddress } from '../../models/courier.to.address.model';
 import { MssqlDatabaseService } from './mssql.database.service';
 import { LoggerService } from './logger.service';
 import { AddressService } from './address.service';
@@ -26,18 +26,18 @@ export class AdminService {
     ) { }
 
     /**
-     * Returns a boolean indicating whether the supplier exists by name.
-     * @param name The supplier name.
-     * @returns Boolean indicating whether the supplier exists by name.
+     * Returns a boolean indicating whether the courier exists by name.
+     * @param name The courier name.
+     * @returns Boolean indicating whether the courier exists by name.
      */
     public async doesNameExist(name: string): Promise<boolean> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            let supplier = await connection.models.Supplier.findOne({ where: { name: name } });
-            this.loggerService.logInfo(`Fetched Supplier with data ${JSON.stringify({ name: name })}.`, "AdminService-MSSQL");
+            let courier = await connection.models.Courier.findOne({ where: { name: name } });
+            this.loggerService.logInfo(`Fetched Courier with data ${JSON.stringify({ name: name })}.`, "AdminService-MSSQL");
             await connection.close();
-            return supplier !== null;
+            return courier !== null;
         }
         catch (err) {
             await connection.close();
@@ -46,26 +46,26 @@ export class AdminService {
     }
 
     /**
-     * Creates a new supplier.
-     * @param supplier The supplier to created.
-     * @returns The created supplier.
+     * Creates a new courier.
+     * @param courier The courier to created.
+     * @returns The created courier.
      */
-    public async createNewSupplier(supplier: Supplier): Promise<Supplier> {
+    public async createNewCourier(courier: Courier): Promise<Courier> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            let foundSupplier = await connection.models.Supplier.findByPk(supplier.supplierId);
-            this.loggerService.logInfo(`Fetched Supplier with ID '${supplier.supplierId}'.`, "AdminService-MSSQL");
+            let foundCourier = await connection.models.Courier.findByPk(courier.courierId);
+            this.loggerService.logInfo(`Fetched Courier with ID '${courier.courierId}'.`, "AdminService-MSSQL");
 
-            if (foundSupplier !== null) {
+            if (foundCourier !== null) {
                 await connection.close();
-                this.loggerService.logError(`Supplier with ID '${supplier.supplierId}' already exists.`, "AdminService");
-                throw new Error(`Supplier with ID '${supplier.supplierId}' already exists!`);
+                this.loggerService.logError(`Courier with ID '${courier.courierId}' already exists.`, "AdminService");
+                throw new Error(`Courier with ID '${courier.courierId}' already exists!`);
             }
 
-            let created = await connection.models.Supplier.create(supplier as any);
-            this.loggerService.logInfo(`Created Supplier with ID '${supplier.supplierId}'.`, "AdminService-MSSQL");
-            let createdConverted = created.dataValues as Supplier;
+            let created = await connection.models.Courier.create(courier as any);
+            this.loggerService.logInfo(`Created Courier with ID '${courier.courierId}'.`, "AdminService-MSSQL");
+            let createdConverted = created.dataValues as Courier;
             await connection.close();
             return createdConverted;
         }
@@ -76,12 +76,12 @@ export class AdminService {
     }
 
     /**
-     * Registers a new address for the given supplier.
+     * Registers a new address for the given courier.
      * @param address The address to create.
-     * @param supplier The supplier.
+     * @param courier The courier.
      * @returns The registered address.
      */
-    public async createNewSupplierAddress(address: Address, supplier: Supplier): Promise<Address> {
+    public async createNewCourierAddress(address: Address, courier: Courier): Promise<Address> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
@@ -99,12 +99,12 @@ export class AdminService {
             this.loggerService.logInfo(`Fetched Address with data ${JSON.stringify(whereClause)}.`, "AdminService-MSSQL");
 
             if (existingAddress !== null) {
-                let createdReference = await this.createNewSupplierAddressReference(existingAddress.dataValues as Address, supplier);
+                let createdReference = await this.createNewCourierAddressReference(existingAddress.dataValues as Address, courier);
                 return existingAddress.dataValues as Address;
             }
 
             let newAddress = await this.addressService.createNewAddress(address);
-            let createdReference = await this.createNewSupplierAddressReference(newAddress, supplier);
+            let createdReference = await this.createNewCourierAddressReference(newAddress, courier);
             let createdConverted = newAddress;
             await connection.close();
             return createdConverted;
@@ -116,31 +116,31 @@ export class AdminService {
     }
 
     /**
-     * Registers a new address reference for the given supplier.
+     * Registers a new address reference for the given courier.
      * @param address The address reference to create.
-     * @param supplier The supplier.
+     * @param courier The courier.
      * @returns The registered address reference.
      */
-    public async createNewSupplierAddressReference(address: Address, supplier: Supplier): Promise<SupplierToAddress> {
+    public async createNewCourierAddressReference(address: Address, courier: Courier): Promise<CourierToAddress> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            let whereClause = { supplierId: supplier.supplierId, addressId: address.addressId };
-            let foundAddress = await connection.models.SupplierToAddress.findOne({ where: whereClause });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify(whereClause)}.`, "AdminService-MSSQL");
+            let whereClause = { courierId: courier.courierId, addressId: address.addressId };
+            let foundAddress = await connection.models.CourierToAddress.findOne({ where: whereClause });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify(whereClause)}.`, "AdminService-MSSQL");
 
             if (foundAddress !== null) {
                 await connection.close();
-                this.loggerService.logError(`Supplier address reference with address ID '${address.addressId}' and supplier ID '${supplier.supplierId}' already exists.`, "AdminService");
-                throw new Error(`Supplier address reference with address ID '${address.addressId}' and supplier ID '${supplier.supplierId}' already exists!`);
+                this.loggerService.logError(`Courier address reference with address ID '${address.addressId}' and courier ID '${courier.courierId}' already exists.`, "AdminService");
+                throw new Error(`Courier address reference with address ID '${address.addressId}' and courier ID '${courier.courierId}' already exists!`);
             }
 
 
-            let newId = await this.mssqlDatabaseService.getNewId("SupplierToAddress", "SupplierToAddressId");
-            let supplierToAddress = { supplierToAddressId: newId, addressId: address.addressId, supplierId: supplier.supplierId } as SupplierToAddress;
-            let created = await connection.models.SupplierToAddress.create(supplierToAddress as any);
-            this.loggerService.logInfo(`Created SupplierToAddress with ID '${newId}'.`, "AdminService-MSSQL");
-            let createdConverted = created.dataValues as SupplierToAddress;
+            let newId = await this.mssqlDatabaseService.getNewId("CourierToAddress", "CourierToAddressId");
+            let courierToAddress = { courierToAddressId: newId, addressId: address.addressId, courierId: courier.courierId } as CourierToAddress;
+            let created = await connection.models.CourierToAddress.create(courierToAddress as any);
+            this.loggerService.logInfo(`Created CourierToAddress with ID '${newId}'.`, "AdminService-MSSQL");
+            let createdConverted = created.dataValues as CourierToAddress;
             await connection.close();
             return createdConverted;
         }
@@ -151,30 +151,30 @@ export class AdminService {
     }
 
     /**
-     * Updates an address for the given supplier.
+     * Updates an address for the given courier.
      * @param address The address update data.
-     * @param supplier The supplier.
+     * @param courier The courier.
      * @returns The updated address.
      */
-    public async updateSupplierAddress(address: Address, supplier: Supplier): Promise<Address> {
+    public async updateCourierAddress(address: Address, courier: Courier): Promise<Address> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            await connection.models.SupplierToAddress.destroy({ where: { addressId: address.addressId, supplierId: supplier.supplierId } });
-            this.loggerService.logInfo(`Deleted SupplierToAddress with data ${JSON.stringify({ addressId: address.addressId, supplierId: supplier.supplierId })}.`, "AdminService-MSSQL");
+            await connection.models.CourierToAddress.destroy({ where: { addressId: address.addressId, courierId: courier.courierId } });
+            this.loggerService.logInfo(`Deleted CourierToAddress with data ${JSON.stringify({ addressId: address.addressId, courierId: courier.courierId })}.`, "AdminService-MSSQL");
             let whereClause = { street: address.street, city: address.city, postalCode: address.postalCode, country: address.country };
             let existingAddress = await connection.models.Address.findOne({ where: whereClause });
             this.loggerService.logInfo(`Fetched Address with data ${JSON.stringify(whereClause)}.`, "AdminService-MSSQL");
             let addressToReturn: Address = null;
 
             if (existingAddress !== null) {
-                let createdReference = await this.createNewSupplierAddressReference(existingAddress.dataValues as Address, supplier);
+                let createdReference = await this.createNewCourierAddressReference(existingAddress.dataValues as Address, courier);
                 addressToReturn = existingAddress.dataValues as Address;
             } else {
                 let newId = await this.mssqlDatabaseService.getNewId("Address", "AddressId");
                 let addressTocreate = { addressId: newId, street: address.street, city: address.city, postalCode: address.postalCode, country: address.country } as Address;
                 let newAddress = await this.addressService.createNewAddress(addressTocreate);
-                let createdReference = await this.createNewSupplierAddressReference(newAddress, supplier);
+                let createdReference = await this.createNewCourierAddressReference(newAddress, courier);
                 addressToReturn = newAddress;
             }
 
@@ -183,8 +183,8 @@ export class AdminService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "AdminService-MSSQL");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: address.addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "AdminService-MSSQL");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: address.addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "AdminService-MSSQL");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: address.addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "AdminService-MSSQL");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: address.addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ deliveryAddressId: address.addressId })}.`, "AdminService-MSSQL");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: address.addressId } });
@@ -204,9 +204,9 @@ export class AdminService {
                 return addressToReturn;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return addressToReturn;
             }
@@ -237,34 +237,34 @@ export class AdminService {
     }
 
     /**
-     * Updates the supplier under the given ID.
-     * @param supplier The supplier data used to update.
-     * @param supplierId The supplier ID.
-     * @returns The updated supplier.
+     * Updates the courier under the given ID.
+     * @param courier The courier data used to update.
+     * @param courierId The courier ID.
+     * @returns The updated courier.
      */
-    public async updateExistingSupplier(supplier: Supplier, supplierId: number): Promise<Supplier> {
+    public async updateExistingCourier(courier: Courier, courierId: number): Promise<Courier> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            if (supplier.supplierId !== supplierId) {
+            if (courier.courierId !== courierId) {
                 await connection.close();
-                this.loggerService.logError(`IDs '${supplierId}' and '${supplier.supplierId}' do not match.`, "AdminService");
-                throw new Error(`IDs '${supplierId}' and '${supplier.supplierId}' do not match!`)
+                this.loggerService.logError(`IDs '${courierId}' and '${courier.courierId}' do not match.`, "AdminService");
+                throw new Error(`IDs '${courierId}' and '${courier.courierId}' do not match!`)
             }
 
-            let foundSupplier = await connection.models.Supplier.findByPk(supplier.supplierId);
-            this.loggerService.logInfo(`Fetched Supplier with ID '${supplierId}'.`, "AdminService-MSSQL");
+            let foundCourier = await connection.models.Courier.findByPk(courier.courierId);
+            this.loggerService.logInfo(`Fetched Courier with ID '${courierId}'.`, "AdminService-MSSQL");
 
-            if (foundSupplier == null) {
+            if (foundCourier == null) {
                 await connection.close();
-                this.loggerService.logError(`Supplier with ID '${supplier.supplierId}' does not exist.`, "AdminService");
-                throw new Error(`Supplier with ID '${supplier.supplierId}' does not exist!`);
+                this.loggerService.logError(`Courier with ID '${courier.courierId}' does not exist.`, "AdminService");
+                throw new Error(`Courier with ID '${courier.courierId}' does not exist!`);
             }
 
-            await connection.models.Supplier.update(supplier, { where: { supplierId: supplierId } });
-            this.loggerService.logInfo(`Supplier with ID '${supplierId}' was updated.`, "AdminService-MSSQL");
+            await connection.models.Courier.update(courier, { where: { courierId: courierId } });
+            this.loggerService.logInfo(`Courier with ID '${courierId}' was updated.`, "AdminService-MSSQL");
             await connection.close();
-            return supplier;
+            return courier;
         }
         catch (err) {
             await connection.close();
@@ -273,14 +273,14 @@ export class AdminService {
     }
 
     /**
-     * Removes the addresses from the supplier.
+     * Removes the addresses from the courier.
      * @param addressIds The address IDs.
-     * @param supplierId The supplier ID.
+     * @param courierId The courier ID.
      */
-    public async deleteSupplierAddresses(addressIds: Array<number>, supplierId: number): Promise<void> {
+    public async deleteCourierAddresses(addressIds: Array<number>, courierId: number): Promise<void> {
         try {
             for (let addressId of addressIds) {
-                await this.deleteSupplierAddress(addressId, supplierId);
+                await this.deleteCourierAddress(addressId, courierId);
             }
         }
         catch (err) {
@@ -289,16 +289,16 @@ export class AdminService {
     }
 
     /**
-     * Deletes the given address from the given supplier.
+     * Deletes the given address from the given courier.
      * @param addressId The address ID.
-     * @param supplierId The supplier ID.
+     * @param courierId The courier ID.
      */
-    public async deleteSupplierAddress(addressId: number, supplierId: number): Promise<void> {
+    public async deleteCourierAddress(addressId: number, courierId: number): Promise<void> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            await connection.models.SupplierToAddress.destroy({ where: { addressId: addressId, supplierId: supplierId } });
-            this.loggerService.logInfo(`Deleted SupplierToAddress with data ${JSON.stringify({ addressId: addressId, supplierId: supplierId })}.`, "AdminService-MSSQL");
+            await connection.models.CourierToAddress.destroy({ where: { addressId: addressId, courierId: courierId } });
+            this.loggerService.logInfo(`Deleted CourierToAddress with data ${JSON.stringify({ addressId: addressId, courierId: courierId })}.`, "AdminService-MSSQL");
 
 
             // Delete old address if no existing references
@@ -306,8 +306,8 @@ export class AdminService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService-MSSQL");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService-MSSQL");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService-MSSQL");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService-MSSQL");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ addressId: addressId })}.`, "AdminService-MSSQL");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: addressId } });
@@ -327,9 +327,9 @@ export class AdminService {
                 return;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return;
             }

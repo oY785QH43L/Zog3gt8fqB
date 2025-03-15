@@ -3,14 +3,14 @@ import { controller, httpDelete, httpPost, httpPut, interfaces } from 'inversify
 import { Request, Response } from 'express';
 import { RequestBodyValidationService } from '../core/services/request.body.validation.service';
 import { AdminService } from '../core/services/admin.service';
-import { CreateSupplierRequestBody } from '../models/request.bodies/admin.request.bodies/create.supplier.request.body/create.supplier.request.body';
-import { Supplier } from '../models/supplier.model';
+import { CreateCourierRequestBody } from '../models/request.bodies/admin.request.bodies/create.courier.request.body/create.courier.request.body';
+import { Courier } from '../models/courier.model';
 import { Address } from '../models/address.model';
-import { UpdateSupplierRequestBody } from '../models/request.bodies/admin.request.bodies/update.supplier.request.body';
+import { UpdateCourierRequestBody } from '../models/request.bodies/admin.request.bodies/update.courier.request.body';
 import { Op } from 'sequelize';
-import { AddSupplierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/add,supplier.address.request.body';
-import { UpdateSupplierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/update.supplier.address.request.body';
-import { RemoveSupplierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/remove.supplier.address.request.body';
+import { AddCourierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/add.courier.address.request.body';
+import { UpdateCourierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/update.courier.address.request.body';
+import { RemoveCourierAddressRequestBody } from '../models/request.bodies/admin.request.bodies/remove.courier.address.request.body';
 import { CreateCategoryRequestBody } from '../models/request.bodies/admin.request.bodies/create.category.request.body';
 import { Category } from '../models/category.model';
 import { UpdateCategoryRequestBody } from '../models/request.bodies/admin.request.bodies/update.category.request.body';
@@ -35,7 +35,7 @@ export class AdminController implements interfaces.Controller {
     ) { }
 
     /**
-     * Represents a controller method that creates a supplier.
+     * Represents a controller method that creates a courier.
      * @param request Format: 
      * {
      *    adminId: number,
@@ -57,52 +57,52 @@ export class AdminController implements interfaces.Controller {
      *    message: string
      *  }
      */
-    @httpPost("/supplier/create")
-    public async createSupplier(request: Request, response: Response): Promise<void> {
+    @httpPost("/courier/create")
+    public async createCourier(request: Request, response: Response): Promise<void> {
         try {
-            let createSupplierRequestBody: CreateSupplierRequestBody = request.body as CreateSupplierRequestBody;
+            let createCourierRequestBody: CreateCourierRequestBody = request.body as CreateCourierRequestBody;
 
             try {
-                this.requestBodyValidationService.validateCreateSupplierRequestBody(createSupplierRequestBody);
+                this.requestBodyValidationService.validateCreateCourierRequestBody(createCourierRequestBody);
             } catch (err) {
                 response.status(400).json({ message: err.message })
                 return;
             }
 
-            if (createSupplierRequestBody.adminId !== Number(process.env.ADMIN_ID)) {
+            if (createCourierRequestBody.adminId !== Number(process.env.ADMIN_ID)) {
                 response.status(403).json({ message: "Unauthorized!" });
                 return;
             }
 
-            let supplierExists = await this.adminService.doesNameExist(createSupplierRequestBody.name);
+            let courierExists = await this.adminService.doesNameExist(createCourierRequestBody.name);
 
-            if (supplierExists) {
-                response.status(400).json({ message: `Supplier ${createSupplierRequestBody.name} already exists!` });
+            if (courierExists) {
+                response.status(400).json({ message: `Courier ${createCourierRequestBody.name} already exists!` });
                 return;
             }
 
-            let id = await this.mssqlDatabaseService.getNewId("Supplier", "SupplierId");
-            let supplier = {
-                supplierId: id,
-                name: createSupplierRequestBody.name,
-                email: createSupplierRequestBody.email,
-                phoneNumber: createSupplierRequestBody.phoneNumber
-            } as Supplier;
+            let id = await this.mssqlDatabaseService.getNewId("Courier", "CourierId");
+            let courier = {
+                courierId: id,
+                name: createCourierRequestBody.name,
+                email: createCourierRequestBody.email,
+                phoneNumber: createCourierRequestBody.phoneNumber
+            } as Courier;
 
-            let supplierCreated = await this.adminService.createNewSupplier(supplier);
+            let courierCreated = await this.adminService.createNewCourier(courier);
 
-            if (createSupplierRequestBody.addresses.length == 0) {
+            if (createCourierRequestBody.addresses.length == 0) {
                 response.status(201).json({ message: "Account was successfully created!" });
                 return;
             }
 
-            for (let addressReq of createSupplierRequestBody.addresses) {
+            for (let addressReq of createCourierRequestBody.addresses) {
                 let newId = await this.mssqlDatabaseService.getNewId("Address", "AddressId");
                 let address = { addressId: newId, street: addressReq.street, city: addressReq.city, postalCode: addressReq.postalCode, country: addressReq.country } as Address;
-                await this.adminService.createNewSupplierAddress(address, supplierCreated);
+                await this.adminService.createNewCourierAddress(address, courierCreated);
             }
 
-            response.status(201).json({ message: "Supplier was successfully created!" });
+            response.status(201).json({ message: "Courier was successfully created!" });
         }
         catch (err) {
             response.status(500).json({ message: err.message });
@@ -110,11 +110,11 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Updates the supplier account.
+     * Updates the courier account.
      * @param request Format:
      * {
      *    adminId: number,
-     *    supplierId: number,
+     *    courierId: number,
      *    name: string,
      *    email: string,
      *    phoneNumber: string,
@@ -124,13 +124,13 @@ export class AdminController implements interfaces.Controller {
      *   message: string
      * }
      */
-    @httpPut("/supplier/update/:sid")
-    public async updateSupplier(request: Request, response: Response): Promise<void> {
+    @httpPut("/courier/update/:cid")
+    public async updateCourier(request: Request, response: Response): Promise<void> {
         try {
-            let updateRequestBody: UpdateSupplierRequestBody = request.body as UpdateSupplierRequestBody;
+            let updateRequestBody: UpdateCourierRequestBody = request.body as UpdateCourierRequestBody;
 
             try {
-                this.requestBodyValidationService.validateUpdateSupplierRequestBody(updateRequestBody);
+                this.requestBodyValidationService.validateUpdateCourierRequestBody(updateRequestBody);
             } catch (err) {
                 response.status(400).json({ message: err.message })
                 return;
@@ -141,30 +141,30 @@ export class AdminController implements interfaces.Controller {
                 return;
             }
 
-            if (Number(request.params.sid) !== updateRequestBody.supplierId) {
-                response.status(400).json({ message: "The supplier ID in the parameters and in the request body have to match!" });
+            if (Number(request.params.cid) !== updateRequestBody.courierId) {
+                response.status(400).json({ message: "The courier ID in the parameters and in the request body have to match!" });
                 return;
             }
 
-            // Find similar supplier
+            // Find similar courier
             let connection = await this.mssqlDatabaseService.initialize();
-            let foundSupplier = await connection.models.Supplier.findOne({ where: { name: updateRequestBody.name, supplierId: { [Op.ne]: updateRequestBody.supplierId } } });
+            let foundCourier = await connection.models.Courier.findOne({ where: { name: updateRequestBody.name, courierId: { [Op.ne]: updateRequestBody.courierId } } });
             await connection.close();
 
-            if (foundSupplier !== null) {
+            if (foundCourier !== null) {
                 response.status(400).json({ message: `The given name ${updateRequestBody.name} already exists!` });
                 return;
             }
 
-            let supplier = {
-                supplierId: updateRequestBody.supplierId,
+            let courier = {
+                courierId: updateRequestBody.courierId,
                 name: updateRequestBody.name,
                 email: updateRequestBody.email,
                 phoneNumber: updateRequestBody.phoneNumber
-            } as Supplier;
+            } as Courier;
 
-            let updated = await this.adminService.updateExistingSupplier(supplier, updateRequestBody.supplierId);
-            response.status(201).json({ message: "The supplier was successfully updated!" });
+            let updated = await this.adminService.updateExistingCourier(courier, updateRequestBody.courierId);
+            response.status(201).json({ message: "The courier was successfully updated!" });
         }
         catch (err) {
             response.status(500).json({ message: err.message });
@@ -172,17 +172,17 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Removes the supplier.
+     * Removes the courier.
      * @param response The response.Format:
      * {
      *   message: string
      * }
      */
-    @httpDelete("/supplier/:adminId/:sid")
-    public async removeSupplier(request: Request, response: Response): Promise<void> {
+    @httpDelete("/courier/:adminId/:cid")
+    public async removeCourier(request: Request, response: Response): Promise<void> {
         try {
             let adminId = Number(request.params.adminId);
-            let supplierId = Number(request.params.sid);
+            let courierId = Number(request.params.cid);
 
 
             if (adminId !== Number(process.env.ADMIN_ID)) {
@@ -191,26 +191,26 @@ export class AdminController implements interfaces.Controller {
             }
 
             let connection = await this.mssqlDatabaseService.initialize();
-            let existingOrderPosition = await connection.models.OrderPosition.findOne({ where: { supplierCompanyId: supplierId } });
+            let existingOrderPosition = await connection.models.OrderPosition.findOne({ where: { courierCompanyId: courierId } });
 
             if (existingOrderPosition !== null) {
-                response.status(400).json({ message: `Supplier cannot be removed as it is referenced by an order position!` });
+                response.status(400).json({ message: `Courier cannot be removed as it is referenced by an order position!` });
                 await connection.close();
                 return;
             }
 
             // Delete the addresses
-            let ids = await connection.models.SupplierToAddress.findAll({ attributes: ["addressId"], where: { supplierId: supplierId } });
+            let ids = await connection.models.CourierToAddress.findAll({ attributes: ["addressId"], where: { courierId: courierId } });
             let idValues = ids.map(function(v) {
                 return Number(v.dataValues["addressId"]);
             })
 
-            await this.adminService.deleteSupplierAddresses(idValues, supplierId);
+            await this.adminService.deleteCourierAddresses(idValues, courierId);
 
-            // Delete the supplier
-            await connection.models.Supplier.destroy({ where: { supplierId: supplierId } });
+            // Delete the courier
+            await connection.models.Courier.destroy({ where: { courierId: courierId } });
             await connection.close();
-            response.status(200).json({ message: `The supplier with ID ${supplierId} was successfully deleted!` });
+            response.status(200).json({ message: `The courier with ID ${courierId} was successfully deleted!` });
         }
         catch (err) {
             response.status(500).json({ message: err.message });
@@ -218,11 +218,11 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Adds a new supplier address.
+     * Adds a new courier address.
      * @param request The request body. Format:
      * {
      *   adminId: number,
-     *   supplierId: number,
+     *   courierId: number,
      *   street: string,
      *   city: string,
      *   postalCode: string,
@@ -233,13 +233,13 @@ export class AdminController implements interfaces.Controller {
      *    message: string
      *  }
      */
-    @httpPost("/supplier/address/create")
-    public async addSupplierAddress(request: Request, response: Response): Promise<void> {
+    @httpPost("/courier/address/create")
+    public async addCourierAddress(request: Request, response: Response): Promise<void> {
         try {
-            let addAddressRequestBody: AddSupplierAddressRequestBody = request.body as AddSupplierAddressRequestBody;
+            let addAddressRequestBody: AddCourierAddressRequestBody = request.body as AddCourierAddressRequestBody;
 
             try {
-                this.requestBodyValidationService.validateAddSupplierAddressRequestBody(addAddressRequestBody);
+                this.requestBodyValidationService.validateAddCourierAddressRequestBody(addAddressRequestBody);
             } catch (err) {
                 response.status(400).json({ message: err.message })
                 return;
@@ -250,10 +250,10 @@ export class AdminController implements interfaces.Controller {
                 return;
             }
 
-            // Fetch supplier data
+            // Fetch courier data
             let connection = await this.mssqlDatabaseService.initialize();
-            let foundSupplier = await connection.models.Supplier.findOne({ where: { supplierId: addAddressRequestBody.supplierId } });
-            let supplierConverted = foundSupplier.dataValues as Supplier;
+            let foundCourier = await connection.models.Courier.findOne({ where: { courierId: addAddressRequestBody.courierId } });
+            let courierConverted = foundCourier.dataValues as Courier;
             await connection.close();
 
             // Save address data
@@ -263,7 +263,7 @@ export class AdminController implements interfaces.Controller {
                 city: addAddressRequestBody.city, postalCode: addAddressRequestBody.postalCode,
                 country: addAddressRequestBody.country
             } as Address;
-            let addressCreated = await this.adminService.createNewSupplierAddress(address, supplierConverted);
+            let addressCreated = await this.adminService.createNewCourierAddress(address, courierConverted);
             response.status(201).json({ message: "Address was successfully created." });
         }
         catch (err) {
@@ -272,11 +272,11 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Updates a supplier address.
+     * Updates a courier address.
      * @param request The request body. Format:
      * {
      *   adminId: number,
-     *   supplierId: number,
+     *   courierId: number,
      *   addressId: number,
      *   street: string,
      *   city: string,
@@ -294,13 +294,13 @@ export class AdminController implements interfaces.Controller {
      *      country: string
      *  }
      */
-    @httpPut("/supplier/address/update/:aid")
-    public async updateSupplierAddress(request: Request, response: Response): Promise<void> {
+    @httpPut("/courier/address/update/:aid")
+    public async updateCourierAddress(request: Request, response: Response): Promise<void> {
         try {
-            let updateAddressRequestBody: UpdateSupplierAddressRequestBody = request.body as UpdateSupplierAddressRequestBody;
+            let updateAddressRequestBody: UpdateCourierAddressRequestBody = request.body as UpdateCourierAddressRequestBody;
 
             try {
-                this.requestBodyValidationService.validateUpdateSupplierAddressRequestBody(updateAddressRequestBody);
+                this.requestBodyValidationService.validateUpdateCourierAddressRequestBody(updateAddressRequestBody);
             } catch (err) {
                 response.status(400).json({ message: err.message })
                 return;
@@ -316,10 +316,10 @@ export class AdminController implements interfaces.Controller {
                 return;
             }
 
-            // Fetch supplier data
+            // Fetch courier data
             let connection = await this.mssqlDatabaseService.initialize();
-            let foundSupplier = await connection.models.Supplier.findOne({ where: { supplierId: updateAddressRequestBody.supplierId } });
-            let supplierConverted = foundSupplier.dataValues as Supplier;
+            let foundCourier = await connection.models.Courier.findOne({ where: { courierId: updateAddressRequestBody.courierId } });
+            let courierConverted = foundCourier.dataValues as Courier;
             await connection.close();
 
             let addressData = {
@@ -327,7 +327,7 @@ export class AdminController implements interfaces.Controller {
                 street: updateAddressRequestBody.street, city: updateAddressRequestBody.city,
                 country: updateAddressRequestBody.country, postalCode: updateAddressRequestBody.postalCode
             } as Address;
-            let updatedAddress = await this.adminService.updateSupplierAddress(addressData, supplierConverted);
+            let updatedAddress = await this.adminService.updateCourierAddress(addressData, courierConverted);
             response.status(201).json({ message: "The address was successfully updated!", newAddress: updatedAddress });
         }
         catch (err) {
@@ -336,11 +336,11 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Removes a new supplier address.
+     * Removes a new courier address.
      * @param request The request body. Format:
      * {
      *   adminId: number,
-     *   supplierId: number,
+     *   courierId: number,
      *   addressId: number
      * }
      * @param response The response. Format
@@ -348,26 +348,26 @@ export class AdminController implements interfaces.Controller {
      *    message: string
      *  }
      */
-    @httpPost("/supplier/address/remove")
-    public async removeSupplierAddress(request: Request, response: Response): Promise<void> {
+    @httpPost("/courier/address/remove")
+    public async removeCourierAddress(request: Request, response: Response): Promise<void> {
         try {
-            let removeSupplierAddressRequestBody: RemoveSupplierAddressRequestBody = request.body as RemoveSupplierAddressRequestBody;
+            let removeCourierAddressRequestBody: RemoveCourierAddressRequestBody = request.body as RemoveCourierAddressRequestBody;
 
             try {
-                this.requestBodyValidationService.validateRemoveSupplierAddressRequestBody(removeSupplierAddressRequestBody);
+                this.requestBodyValidationService.validateRemoveCourierAddressRequestBody(removeCourierAddressRequestBody);
             } catch (err) {
                 response.status(400).json({ message: err.message })
                 return;
             }
 
-            if (removeSupplierAddressRequestBody.adminId !== Number(process.env.ADMIN_ID)) {
+            if (removeCourierAddressRequestBody.adminId !== Number(process.env.ADMIN_ID)) {
                 response.status(403).json({ message: "Unauthorized!" });
                 return;
             }
 
 
-            await this.adminService.deleteSupplierAddress(removeSupplierAddressRequestBody.addressId, removeSupplierAddressRequestBody.supplierId);
-            response.status(200).json({ message: `The address with ID ${removeSupplierAddressRequestBody.addressId} was successfully deleted!` });
+            await this.adminService.deleteCourierAddress(removeCourierAddressRequestBody.addressId, removeCourierAddressRequestBody.courierId);
+            response.status(200).json({ message: `The address with ID ${removeCourierAddressRequestBody.addressId} was successfully deleted!` });
         }
         catch (err) {
             response.status(500).json({ message: err.message });

@@ -1,8 +1,8 @@
 /**
- * The supplier.
+ * The courier.
  */
-export interface Supplier {
-    supplierId: number;
+export interface Courier {
+    courierId: number;
     name: string;
     email: string;
     phoneNumber: string;

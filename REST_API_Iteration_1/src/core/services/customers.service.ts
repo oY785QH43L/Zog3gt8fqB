@@ -9,8 +9,8 @@ import { VendorToProduct } from '../../models/vendor.to.product.model';
 import { Vendor } from '../../models/vendor.model';
 import { VendorInformation } from '../../models/vendor.information.model';
 import { ProductToCart } from '../../models/product.to.cart.model';
-import { SupplierInformation } from '../../models/supplier.information.model';
-import { Supplier } from '../../models/supplier.model';
+import { CourierInformation } from '../../models/courier.information.model';
+import { Courier } from '../../models/courier.model';
 import { CustomerOrder } from '../../models/customer.order.model';
 import sequelize = require('sequelize');
 import { OrderPosition } from '../../models/order.position.model';
@@ -270,8 +270,8 @@ export class CustomersService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "CustomersService");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: address.addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "CustomersService");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: address.addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "CustomersService");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: address.addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "CustomersService");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: address.addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ deliveryAddressId: address.addressId })}.`, "CustomersService");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: address.addressId } });
@@ -291,9 +291,9 @@ export class CustomersService {
                 return addressToReturn;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return addressToReturn;
             }
@@ -357,8 +357,8 @@ export class CustomersService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "CustomersService");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "CustomersService");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "CustomersService");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "CustomersService");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ deliveryAddressId: addressId })}.`, "CustomersService");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: addressId } });
@@ -378,9 +378,9 @@ export class CustomersService {
                 return;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return;
             }
@@ -587,39 +587,39 @@ export class CustomersService {
     }
 
     /**
-     * Retrieves supplier information for the given supplier.
-     * @param supplierId The supplier ID.
-     * @returns The supplier information.
+     * Retrieves courier information for the given courier.
+     * @param courierId The courier ID.
+     * @returns The courier information.
      */
-    public async getSupplierInformation(supplierId: number): Promise<SupplierInformation> {
+    public async getCourierInformation(courierId: number): Promise<CourierInformation> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
-            let supplierData = await connection.models.Supplier.findOne({ where: { supplierId: supplierId } });
-            this.loggerService.logInfo(`Fetched Supplier with ID '${supplierId}'.`, "CustomersService");
+            let courierData = await connection.models.Courier.findOne({ where: { courierId: courierId } });
+            this.loggerService.logInfo(`Fetched Courier with ID '${courierId}'.`, "CustomersService");
 
-            if (supplierData == null) {
+            if (courierData == null) {
                 await connection.close();
-                this.loggerService.logError(`Supplier with ID '${supplierId}' does not exist.`, "CustomersService");
-                throw new Error(`Supplier with ID '${supplierId}' does not exist!`);
+                this.loggerService.logError(`Courier with ID '${courierId}' does not exist.`, "CustomersService");
+                throw new Error(`Courier with ID '${courierId}' does not exist!`);
             }
 
-            let supplierDataConverted = supplierData.dataValues as Supplier;
-            let addresses = await connection.query("select a.* from SupplierToAddress sa " +
+            let courierDataConverted = courierData.dataValues as Courier;
+            let addresses = await connection.query("select a.* from CourierToAddress sa " +
                 "left outer join Address a " +
                 "on sa.AddressId = a.AddressId " +
-                `where sa.SupplierId = ${supplierId}`);
-            this.loggerService.logInfo(`Fetched Address for Supplier with ID '${supplierId}'.`, "CustomersService");
+                `where sa.CourierId = ${courierId}`);
+            this.loggerService.logInfo(`Fetched Address for Courier with ID '${courierId}'.`, "CustomersService");
             let addressesConverted: Address[] = addresses[0].map(function(v) {
                 return { addressId: v["AddressId"], street: v["Street"], city: v["City"], postalCode: v["PostalCode"], country: v["Country"] } as Address;
             });
             let result = {
-                supplierId: supplierId,
-                name: supplierDataConverted.name,
-                email: supplierDataConverted.email,
-                phoneNumber: supplierDataConverted.phoneNumber,
-                supplierAddresses: addressesConverted
-            } as SupplierInformation;
+                courierId: courierId,
+                name: courierDataConverted.name,
+                email: courierDataConverted.email,
+                phoneNumber: courierDataConverted.phoneNumber,
+                courierAddresses: addressesConverted
+            } as CourierInformation;
             await connection.close();
             return result;
         }
@@ -662,10 +662,10 @@ export class CustomersService {
      * Places an order for the customer.
      * @param shoppingCartId The shopping cart ID.
      * @param billingAddressId The billing address ID.
-     * @param supplierCompanyId The supplier company ID.
+     * @param courierCompanyId The courier company ID.
      * @returns The created order.
      */
-    public async makeOrder(shoppingCartId: number, billingAddressId: number, supplierCompanyId: number): Promise<CustomerOrder> {
+    public async makeOrder(shoppingCartId: number, billingAddressId: number, courierCompanyId: number): Promise<CustomerOrder> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
@@ -679,14 +679,14 @@ export class CustomersService {
                 throw new Error(`No address under the given ID '${billingAddressId}' exists!`);
             }
 
-            // Check if the supplier exists
-            let supplier = await connection.models.Supplier.findOne({ where: { supplierId: supplierCompanyId } });
-            this.loggerService.logInfo(`Fetched Supplier with ID '${supplierCompanyId}'.`, "CustomersService");
+            // Check if the courier exists
+            let courier = await connection.models.Courier.findOne({ where: { courierId: courierCompanyId } });
+            this.loggerService.logInfo(`Fetched Courier with ID '${courierCompanyId}'.`, "CustomersService");
 
-            if (supplier == null) {
+            if (courier == null) {
                 await connection.close();
-                this.loggerService.logError(`No supplier under the given ID '${supplierCompanyId}' exists.`, "CustomersService");
-                throw new Error(`No supplier under the given ID '${supplierCompanyId}' exists!`);
+                this.loggerService.logError(`No courier under the given ID '${courierCompanyId}' exists.`, "CustomersService");
+                throw new Error(`No courier under the given ID '${courierCompanyId}' exists!`);
             }
 
             // Check if the shopping cart exists
@@ -740,7 +740,7 @@ export class CustomersService {
             this.loggerService.logInfo(`Created CustomerOrder with ID '${orderId}'.`, "CustomersService");
 
             for (let item of productToCartsConverted) {
-                await this.placeItem(order, item, supplierCompanyId, orderDate);
+                await this.placeItem(order, item, courierCompanyId, orderDate);
             }
 
             await connection.close();
@@ -756,10 +756,10 @@ export class CustomersService {
      * Places an item to the given order.
      * @param order The order.
      * @param orderItem The order item.
-     * @param supplierCompanyId The supplier company ID.
+     * @param courierCompanyId The courier company ID.
      * @param orderDate The order date.
      */
-    public async placeItem(order: CustomerOrder, orderItem: ProductToCart, supplierCompanyId: number, orderDate: Date): Promise<void> {
+    public async placeItem(order: CustomerOrder, orderItem: ProductToCart, courierCompanyId: number, orderDate: Date): Promise<void> {
         let connection: Sequelize = await this.mssqlDatabaseService.initialize();
 
         try {
@@ -784,14 +784,14 @@ export class CustomersService {
                 throw new Error(`No address under the given ID '${order.billingAddressId}' exists!`);
             }
 
-            // Check if the supplier exists
-            let supplier = await connection.models.Supplier.findOne({ where: { supplierId: supplierCompanyId } });
-            this.loggerService.logInfo(`Fetched Supplier with ID '${supplierCompanyId}'.`, "CustomersService");
+            // Check if the courier exists
+            let courier = await connection.models.Courier.findOne({ where: { courierId: courierCompanyId } });
+            this.loggerService.logInfo(`Fetched Courier with ID '${courierCompanyId}'.`, "CustomersService");
 
-            if (supplier == null) {
+            if (courier == null) {
                 await connection.close();
-                this.loggerService.logError(`No supplier under the given ID '${supplierCompanyId}' exists.`, "CustomersService");
-                throw new Error(`No supplier under the given ID '${supplierCompanyId}' exists!`);
+                this.loggerService.logError(`No courier under the given ID '${courierCompanyId}' exists.`, "CustomersService");
+                throw new Error(`No courier under the given ID '${courierCompanyId}' exists!`);
             }
 
             // Create order position object
@@ -803,7 +803,7 @@ export class CustomersService {
             let newId = await this.mssqlDatabaseService.getNewId("OrderPosition", "OrderPositionId");
             let orderPosition = {
                 orderPositionId: newId, orderId: order.orderId, amount: orderItem.amount,
-                vendorToProductId: orderItem.vendorToProductId, supplierCompanyId: supplierCompanyId,
+                vendorToProductId: orderItem.vendorToProductId, courierCompanyId: courierCompanyId,
                 deliveryDate: date, deliveryAddressId: order.billingAddressId
             } as OrderPosition;
 

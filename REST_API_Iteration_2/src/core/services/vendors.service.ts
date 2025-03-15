@@ -267,8 +267,8 @@ export class VendorsService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "VendorsService-MSSQL");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "VendorsService-MSSQL");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "VendorsService-MSSQL");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: addressId })}.`, "VendorsService-MSSQL");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ deliveryAddressId: addressId })}.`, "VendorsService-MSSQL");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: addressId } });
@@ -288,9 +288,9 @@ export class VendorsService {
                 return;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return;
             }
@@ -352,8 +352,8 @@ export class VendorsService {
             this.loggerService.logInfo(`Fetched CustomerToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "VendorsService-MSSQL");
             let foundVendorReference = connection.models.VendorToAddress.findOne({ where: { addressId: address.addressId } });
             this.loggerService.logInfo(`Fetched VendorToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "VendorsService-MSSQL");
-            let foundSupplierReference = connection.models.SupplierToAddress.findOne({ where: { addressId: address.addressId } });
-            this.loggerService.logInfo(`Fetched SupplierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "VendorsService-MSSQL");
+            let foundCourierReference = connection.models.CourierToAddress.findOne({ where: { addressId: address.addressId } });
+            this.loggerService.logInfo(`Fetched CourierToAddress with data ${JSON.stringify({ addressId: address.addressId })}.`, "VendorsService-MSSQL");
             let foundDeliveryReference = connection.models.OrderPosition.findOne({ where: { deliveryAddressId: address.addressId } });
             this.loggerService.logInfo(`Fetched OrderPosition with data ${JSON.stringify({ deliveryAddressId: address.addressId })}.`, "VendorsService-MSSQL");
             let foundOrderReference = connection.models.CustomerOrder.findOne({ where: { billingAddressId: address.addressId } });
@@ -373,9 +373,9 @@ export class VendorsService {
                 return addressToReturn;
             }
 
-            let foundSupplierResult = await foundSupplierReference;
+            let foundCourierResult = await foundCourierReference;
 
-            if (foundSupplierResult !== null) {
+            if (foundCourierResult !== null) {
                 await connection.close();
                 return addressToReturn;
             }

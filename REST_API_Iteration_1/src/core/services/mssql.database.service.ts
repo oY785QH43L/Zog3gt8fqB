@@ -314,15 +314,15 @@ export class MssqlDatabaseService {
                 }
             );
 
-            sequelize.define("SupplierToAddress",
+            sequelize.define("CourierToAddress",
                 {
-                    supplierToAddressId: {
+                    courierToAddressId: {
                         type: DataTypes.INTEGER,
                         allowNull: false,
                         primaryKey: true
 
                     },
-                    supplierId: {
+                    courierId: {
                         type: DataTypes.INTEGER,
                         allowNull: false,
                     },
@@ -332,8 +332,8 @@ export class MssqlDatabaseService {
                     }
                 },
                 {
-                    tableName: "SupplierToAddress",
-                    modelName: "SupplierToAddress",
+                    tableName: "CourierToAddress",
+                    modelName: "CourierToAddress",
                     createdAt: false,
                     updatedAt: false
                 }
@@ -358,7 +358,7 @@ export class MssqlDatabaseService {
                         type: DataTypes.INTEGER,
                         allowNull: false
                     },
-                    supplierCompanyId: {
+                    courierCompanyId: {
                         type: DataTypes.INTEGER,
                         allowNull: false
                     },
@@ -416,9 +416,9 @@ export class MssqlDatabaseService {
                 }
             );
 
-            sequelize.define("Supplier",
+            sequelize.define("Courier",
                 {
-                    supplierId: {
+                    courierId: {
                         type: DataTypes.INTEGER,
                         allowNull: false,
                         primaryKey: true
@@ -438,8 +438,8 @@ export class MssqlDatabaseService {
                     }
                 },
                 {
-                    tableName: "Supplier",
-                    modelName: "Supplier",
+                    tableName: "Courier",
+                    modelName: "Courier",
                     createdAt: false,
                     updatedAt: false
                 }

@@ -1,9 +1,9 @@
 /**
- * The update supplier address request body.
+ * The update courier address request body.
  */
-export interface UpdateSupplierAddressRequestBody {
+export interface UpdateCourierAddressRequestBody {
     adminId: number,
-    supplierId: number,
+    courierId: number,
     addressId: number,
     street: string,
     city: string,

@@ -6,7 +6,7 @@ export interface OrderPosition {
     orderId: number;
     amount: number;
     vendorToProductId: number;
-    supplierCompanyId: number;
+    courierCompanyId: number;
     deliveryDate: Date;
     deliveryAddressId: number;
 }

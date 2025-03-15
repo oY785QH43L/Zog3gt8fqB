@@ -19,12 +19,12 @@ import { CreateVendorProductRequestBody } from '../../models/request.bodies/vend
 import { UpdateVendorProductRequestBody } from '../../models/request.bodies/vendor.request.bodies/update.vendor.product.request.body';
 import { AddCategoryRequestBody } from '../../models/request.bodies/vendor.request.bodies/add.category.request.body';
 import { RemoveCategoryRequestBody } from '../../models/request.bodies/vendor.request.bodies/remove.category.request.body';
-import { CreateSupplierRequestBody } from '../../models/request.bodies/admin.request.bodies/create.supplier.request.body/create.supplier.request.body';
-import { CreateSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/create.supplier.request.body/create.supplier.address.request.body';
-import { UpdateSupplierRequestBody } from '../../models/request.bodies/admin.request.bodies/update.supplier.request.body';
-import { AddSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/add,supplier.address.request.body';
-import { UpdateSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/update.supplier.address.request.body';
-import { RemoveSupplierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/remove.supplier.address.request.body';
+import { CreateCourierRequestBody } from '../../models/request.bodies/admin.request.bodies/create.courier.request.body/create.courier.request.body';
+import { CreateCourierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/create.courier.request.body/create.courier.address.request.body';
+import { UpdateCourierRequestBody } from '../../models/request.bodies/admin.request.bodies/update.courier.request.body';
+import { AddCourierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/add.courier.address.request.body';
+import { UpdateCourierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/update.courier.address.request.body';
+import { RemoveCourierAddressRequestBody } from '../../models/request.bodies/admin.request.bodies/remove.courier.address.request.body';
 import { CreateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/create.category.request.body';
 import { UpdateCategoryRequestBody } from '../../models/request.bodies/admin.request.bodies/update.category.request.body';
 
@@ -266,8 +266,8 @@ export class RequestBodyValidationService {
             throw new Error("Property billingAddressId cannot be empty!");
         }
 
-        if (body.supplierCompanyId === undefined || body.supplierCompanyId === null) {
-            throw new Error("Property supplierCompanyId cannot be empty!");
+        if (body.courierCompanyId === undefined || body.courierCompanyId === null) {
+            throw new Error("Property courierCompanyId cannot be empty!");
         }
     }
 
@@ -541,7 +541,7 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateCreateSupplierRequestBody(body: CreateSupplierRequestBody) {
+    public validateCreateCourierRequestBody(body: CreateCourierRequestBody) {
         if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
@@ -563,7 +563,7 @@ export class RequestBodyValidationService {
         }
 
         for (let address of body.addresses) {
-            this.validateCreateSupplierAddressRequestBody(address);
+            this.validateCreateCourierAddressRequestBody(address);
         }
     }
 
@@ -571,7 +571,7 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateCreateSupplierAddressRequestBody(body: CreateSupplierAddressRequestBody) {
+    public validateCreateCourierAddressRequestBody(body: CreateCourierAddressRequestBody) {
         if (body.city === undefined || body.city === null || body.city.length == 0) {
             throw new Error("Property city cannot be empty!");
         }
@@ -593,7 +593,7 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateUpdateSupplierRequestBody(body: UpdateSupplierRequestBody) {
+    public validateUpdateCourierRequestBody(body: UpdateCourierRequestBody) {
         if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
@@ -615,13 +615,13 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateAddSupplierAddressRequestBody(body: AddSupplierAddressRequestBody) {
+    public validateAddCourierAddressRequestBody(body: AddCourierAddressRequestBody) {
         if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null) {
-            throw new Error("Property supplierId cannot be empty!");
+        if (body.courierId === undefined || body.courierId === null) {
+            throw new Error("Property courierId cannot be empty!");
         }
 
         if (body.city === undefined || body.city === null || body.city.length == 0) {
@@ -645,7 +645,7 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateUpdateSupplierAddressRequestBody(body: UpdateSupplierAddressRequestBody) {
+    public validateUpdateCourierAddressRequestBody(body: UpdateCourierAddressRequestBody) {
         if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
@@ -654,8 +654,8 @@ export class RequestBodyValidationService {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null) {
-            throw new Error("Property supplierId cannot be empty!");
+        if (body.courierId === undefined || body.courierId === null) {
+            throw new Error("Property courierId cannot be empty!");
         }
 
         if (body.city === undefined || body.city === null || body.city.length == 0) {
@@ -679,7 +679,7 @@ export class RequestBodyValidationService {
      * Validates the given request body.
      * @param body The request body.
      */
-    public validateRemoveSupplierAddressRequestBody(body: RemoveSupplierAddressRequestBody) {
+    public validateRemoveCourierAddressRequestBody(body: RemoveCourierAddressRequestBody) {
         if (body.adminId === undefined || body.adminId === null) {
             throw new Error("Property adminId cannot be empty!");
         }
@@ -688,8 +688,8 @@ export class RequestBodyValidationService {
             throw new Error("Property addressId cannot be empty!");
         }
 
-        if (body.supplierId === undefined || body.supplierId === null) {
-            throw new Error("Property supplierId cannot be empty!");
+        if (body.courierId === undefined || body.courierId === null) {
+            throw new Error("Property courierId cannot be empty!");
         }
     }
 

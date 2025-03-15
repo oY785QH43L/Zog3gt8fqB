@@ -20,7 +20,7 @@ import { ProductInformation } from '../models/product.information.model';
 import { VendorInformation } from '../models/vendor.information.model';
 import { AddProductToCartRequestBody } from '../models/request.bodies/customer.request.bodies/add.product.to.cart.request.body';
 import { RemoveProductFromCartRequestBody } from '../models/request.bodies/customer.request.bodies/remove.product.from.cart.request.body';
-import { SupplierInformation } from '../models/supplier.information.model';
+import { CourierInformation } from '../models/courier.information.model';
 import { MakeOrderRequestBody } from '../models/request.bodies/customer.request.bodies/make.order.request.body';
 import { MssqlDatabaseService } from '../core/services/mssql.database.service';
 import { ProductsService } from '../core/services/products.service';
@@ -739,15 +739,15 @@ export class CustomersController implements interfaces.Controller {
     }
 
     /**
-     * Returns the supplier information to the customer.
+     * Returns the courier information to the customer.
      * @param request The request body. 
      * @param response The response body. Format:
      * {
-     *    supplierId: number,
+     *    courierId: number,
      *    name: string,
      *    email: string,
      *    phoneNumber: string,
-     *    supplierAddresses: [
+     *    courierAddresses: [
      *       {
      *           addressId: number,
      *           street: string,
@@ -759,11 +759,11 @@ export class CustomersController implements interfaces.Controller {
      *   ]
      * }
      */
-    @httpGet("/supplier/:kid/:sid")
-    public async getSupplierInformation(request: Request, response: Response): Promise<void> {
+    @httpGet("/courier/:kid/:cid")
+    public async getCourierInformation(request: Request, response: Response): Promise<void> {
         try {
             let customerId = Number(request.params.kid);
-            let supplierId = Number(request.params.sid);
+            let courierId = Number(request.params.cid);
             let verified = await this.customerSessionService.verifyCustomer(customerId);
 
             if (!verified) {
@@ -771,8 +771,8 @@ export class CustomersController implements interfaces.Controller {
                 return;
             }
 
-            let supplierInformation: SupplierInformation = await this.customersService.getSupplierInformation(supplierId);
-            response.status(200).json(supplierInformation);
+            let courierInformation: CourierInformation = await this.customersService.getCourierInformation(courierId);
+            response.status(200).json(courierInformation);
         }
         catch (err) {
             response.status(500).json({ message: err.message });
@@ -786,7 +786,7 @@ export class CustomersController implements interfaces.Controller {
      *    customerId: number,
      *    shoppingCartId: number,
      *    billingAddressId: number,
-     *    supplierCompanyId: number
+     *    courierCompanyId: number
      * }
      * @param response The response. Format:
      *  {
@@ -821,7 +821,7 @@ export class CustomersController implements interfaces.Controller {
                 return;
             }
 
-            let order = await this.customersService.makeOrder(makeOrderRequestBody.shoppingCartId, makeOrderRequestBody.billingAddressId, makeOrderRequestBody.supplierCompanyId);
+            let order = await this.customersService.makeOrder(makeOrderRequestBody.shoppingCartId, makeOrderRequestBody.billingAddressId, makeOrderRequestBody.courierCompanyId);
             response.status(201).json({ message: `Order from shopping cart ${makeOrderRequestBody.shoppingCartId} for the customer ${makeOrderRequestBody.customerId} was successfully placed under the ID ${order.orderId}` });
         }
         catch (err) {
