@@ -355,8 +355,8 @@ sql_tables = [
     "Customer",
     "CustomerOrder",
     "CustomerToAddress",
-    "Supplier",
-    "SupplierToAddress",
+    "Courier",
+    "CourierToAddress",
     "Vendor",
     "VendorToAddress",
     "Product",
@@ -472,21 +472,21 @@ try:
     );
     """,
     """
-    CREATE TABLE Supplier
+    CREATE TABLE Courier
     (
-        SupplierId INT PRIMARY KEY,
+        CourierId INT PRIMARY KEY,
         Name VARCHAR(100) NOT NULL,
         Email VARCHAR(100) NOT NULL,
         PhoneNumber VARCHAR(20)
     );
     """,
     """
-    CREATE TABLE SupplierToAddress
+    CREATE TABLE CourierToAddress
     (
-        SupplierToAddressId INT PRIMARY KEY,
-        SupplierId INT NOT NULL,
+        CourierToAddressId INT PRIMARY KEY,
+        CourierId INT NOT NULL,
         AddressId INT NOT NULL,
-        FOREIGN KEY (SupplierId) REFERENCES Supplier(SupplierId),
+        FOREIGN KEY (CourierId) REFERENCES Courier(CourierId),
         FOREIGN KEY (AddressId) REFERENCES Address(AddressId)
     );
     """,
@@ -538,10 +538,10 @@ try:
     OrderId INT NOT NULL,
     Amount INT, 
     VendorToProductId INT NOT NULL,
-    SupplierCompanyId INT NOT NULL,
+    CourierCompanyId INT NOT NULL,
     DeliveryDate DATETIME NOT NULL,
     DeliveryAddressId INT NOT NULL,
-    FOREIGN KEY (SupplierCompanyId) REFERENCES Supplier(SupplierId),
+    FOREIGN KEY (CourierCompanyId) REFERENCES Courier(CourierId),
     FOREIGN KEY (DeliveryAddressId) REFERENCES Address(AddressId),
     FOREIGN KEY (OrderId) REFERENCES CustomerOrder(OrderId),
     FOREIGN KEY (VendorToProductId) REFERENCES VendorToProduct(VendorToProductId),
