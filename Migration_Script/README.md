@@ -9,7 +9,7 @@ model to the polyglot persistence model.
 ## Prerequisites
 * Python compiler
 * Running MSSQL server
-* Runnning MongoDB cluster
+* Running MongoDB cluster
 * Running Neo4j server
 
 ## Start the script
