@@ -687,7 +687,7 @@ export class VendorsController implements interfaces.Controller {
      * {
      *   "result": [
      *   {
-     *       productId: number
+     *       productId: number,
      *       name: string,
      *       description: string,
      *       unitPriceEuro: decimal,
