@@ -603,7 +603,7 @@ export class CustomersController implements interfaces.Controller {
      *       name: string,
      *       userName: string,
      *       email: string,
-     *       phoneNumber: string
+     *       phoneNumber: string,
      *       vendorAddresses: [
      *         {
      *           addressId: number,
