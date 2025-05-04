@@ -42,7 +42,7 @@ def create_dict(parameters, vals):
 def commit(connection, log_message=None):
     """Commis the connection.
     Args:
-        connection (_type_): The connection
+        connection (_type_): The connection.
         log_message (_type_, optional):
         Optional log message. Defaults to None.
     """
