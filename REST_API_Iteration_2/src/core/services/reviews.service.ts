@@ -163,7 +163,7 @@ export class ReviewsService {
 
     /**
      * Fetches reviews for the given vendor's product.
-     * @param vendorToProductId The vendor's product ID
+     * @param vendorToProductId The vendor's product ID.
      * @returns The fetched reviews.
      */
     public async getReviews(vendorToProductId: number): Promise<Review[]> {

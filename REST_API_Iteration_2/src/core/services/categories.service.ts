@@ -225,7 +225,7 @@ export class CategoriesService {
     /**
      * Returns a boolean indicating whether the given category exists for the given product.
      * @param productId The product ID.
-     * @param categoryId The catgory ID.
+     * @param categoryId The category ID.
      * @returns Boolean indicating whether the given category exists for the given product.
      */
     public async doesCategoryExist(productId: number, categoryId: number): Promise<boolean> {

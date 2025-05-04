@@ -36,6 +36,18 @@ const upload = multer({ storage });
  * The vendors controller.
  */
 export class VendorsController implements interfaces.Controller {
+    /**
+     * Initializes the vendors controller.
+     * @param mssqlDatabaseService The MSSQL database service.
+     * @param mongoDBService The MongoDB service.
+     * @param productsService The products service.
+     * @param categoriesService The categories service.
+     * @param hashingService The hashing service.
+     * @param vendorsService The vendors service.
+     * @param vendorSessionService The vendor session service.
+     * @param requestBodyValidationService The request body validation service.
+     * @param formDataConversionService The form data conversion service.
+     */
     constructor(
         @inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
         @inject(MongoDbDatabaseService.name) private mongoDBService: MongoDbDatabaseService,
@@ -67,7 +79,7 @@ export class VendorsController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -128,7 +140,7 @@ export class VendorsController implements interfaces.Controller {
      *    userName: string,
      *    password: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -181,9 +193,9 @@ export class VendorsController implements interfaces.Controller {
      *    name: string,
      *    email: string,
      *    password: string,
-     *    phoneNumber: string,
+     *    phoneNumber: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -280,7 +292,7 @@ export class VendorsController implements interfaces.Controller {
                 "on va.AddressId = a.AddressId " +
                 `where v.VendorId = ${request.params.vid}`);
             await connection.close();
-            let addresses: Address[] = data[0].map(function(information) {
+            let addresses: Address[] = data[0].map(function (information) {
                 let a = {
                     addressId: information["AddressId"], street: information["Street"],
                     city: information["City"], postalCode: information["PostalCode"],
@@ -306,7 +318,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Deletes the account.
      * @param request The request body.
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -325,7 +337,7 @@ export class VendorsController implements interfaces.Controller {
             // Delete all products
             let connection = await this.mssqlDatabaseService.initialize();
             let ids = await connection.models.VendorToProduct.findAll({ attributes: ["vendorToProductId"], where: { vendorId: vendorId } });
-            let idValues = ids.map(function(v) {
+            let idValues = ids.map(function (v) {
                 return Number(v.dataValues["vendorToProductId"]);
             });
             await connection.close();
@@ -356,7 +368,7 @@ export class VendorsController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -421,6 +433,7 @@ export class VendorsController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/address/update/:aid")
@@ -469,7 +482,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Deletes an address for a vendor.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -548,9 +561,9 @@ export class VendorsController implements interfaces.Controller {
      *    ],
      *    // multer
      *    imageContent: <file>,
-     *    videoContent: <file>,
+     *    videoContent: <file>
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -588,7 +601,7 @@ export class VendorsController implements interfaces.Controller {
                     return;
                 }
 
-                categories = data.map(function(c) {
+                categories = data.map(function (c) {
                     return { categoryId: c.dataValues["categoryId"], name: c.dataValues["name"] } as Category;
                 });
 
@@ -644,7 +657,7 @@ export class VendorsController implements interfaces.Controller {
      *   imageContent: <file>,
      *   videoContent: <file>
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string,
      *    updatedData: {
@@ -792,7 +805,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Removes a vendor product.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -831,9 +844,9 @@ export class VendorsController implements interfaces.Controller {
      * Adds a category to the global product definition.
      * @param request The request body. Format:
      * {
-     *   vendorId: number;
-     *   vendorToProductId: number;
-     *   categoryId: number;
+     *   vendorId: number,
+     *   vendorToProductId: number,
+     *   categoryId: number
      * }
      * @param response The response body. Format:
      * {
@@ -890,9 +903,9 @@ export class VendorsController implements interfaces.Controller {
      * Removes a category from the global product definition.
      * @param request The request body. Format:
      * {
-     *   vendorId: number;
-     *   vendorToProductId: number;
-     *   categoryId: number;
+     *   vendorId: number,
+     *   vendorToProductId: number,
+     *   categoryId: number
      * }
      * @param response The response body. Format:
      * {

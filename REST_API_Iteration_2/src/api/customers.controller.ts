@@ -47,6 +47,19 @@ import { ProductRecommendationService } from '../core/services/product.recommend
  * The customers controller.
  */
 export class CustomersController implements interfaces.Controller {
+    /**
+     * Initializes the customers controller.
+     * @param mssqlDatabaseService The MSSQL database service.
+     * @param mongoDBService The MongoDB service.
+     * @param hashingService The hashing service.
+     * @param customersService The customers service.
+     * @param customerSessionService The customer session service.
+     * @param reviewsService The reviews service.
+     * @param productsService The products service.
+     * @param customerActionsService The customer actions service.
+     * @param productsRecommendationService The product recommendation service.
+     * @param requestBodyValidationService The request body validation service.
+     */
     constructor(
         @inject(MssqlDatabaseService.name) private mssqlDatabaseService: MssqlDatabaseService,
         @inject(MongoDbDatabaseService.name) private mongoDBService: MongoDbDatabaseService,
@@ -80,7 +93,7 @@ export class CustomersController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -148,7 +161,7 @@ export class CustomersController implements interfaces.Controller {
      *    userName: string,
      *    password: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -204,7 +217,7 @@ export class CustomersController implements interfaces.Controller {
      *    password: string,
      *    phoneNumber: string,
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -303,7 +316,7 @@ export class CustomersController implements interfaces.Controller {
                 "on ca.AddressId = a.AddressId " +
                 `where c.CustomerId = ${request.params.kid}`);
             await connection.close();
-            let addresses: Address[] = data[0].map(function(information) {
+            let addresses: Address[] = data[0].map(function (information) {
                 let a = {
                     addressId: information["AddressId"], street: information["Street"],
                     city: information["City"], postalCode: information["PostalCode"],
@@ -330,7 +343,7 @@ export class CustomersController implements interfaces.Controller {
     /**
      * Deletes the customer account.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -357,7 +370,7 @@ export class CustomersController implements interfaces.Controller {
 
             // Delete order positions
             let orderPositions = data[0] as OrderPosition[];
-            let positionIds = orderPositions.map(function(v) {
+            let positionIds = orderPositions.map(function (v) {
                 return v["OrderPositionId"];
             });
 
@@ -374,7 +387,7 @@ export class CustomersController implements interfaces.Controller {
 
             // Delete the addresses
             let ids = await connection.models.CustomerToAddress.findAll({ attributes: ["addressId"], where: { customerId: customerId } });
-            let idValues = ids.map(function(v) {
+            let idValues = ids.map(function (v) {
                 return Number(v.dataValues["addressId"]);
             })
 
@@ -412,7 +425,7 @@ export class CustomersController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -477,6 +490,7 @@ export class CustomersController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/address/update/:aid")
@@ -525,7 +539,7 @@ export class CustomersController implements interfaces.Controller {
     /**
      * Deletes an address for a customer.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -586,7 +600,7 @@ export class CustomersController implements interfaces.Controller {
                 "on ca.AddressId = a.AddressId " +
                 `where c.CustomerId = ${customerId}`);
             await connection.close();
-            let addresses: Address[] = data[0].map(function(information) {
+            let addresses: Address[] = data[0].map(function (information) {
                 let a = {
                     addressId: information["AddressId"], street: information["Street"],
                     city: information["City"], postalCode: information["PostalCode"],
@@ -607,7 +621,7 @@ export class CustomersController implements interfaces.Controller {
      * @param response The response body. Format:
      * {
      *    productInformation: {
-     *       productId: number
+     *       productId: number,
      *       name: string,
      *       description: string,
      *       unitPriceEuro: decimal,
@@ -638,7 +652,7 @@ export class CustomersController implements interfaces.Controller {
      *       name: string,
      *       userName: string,
      *       email: string,
-     *       phoneNumber: string
+     *       phoneNumber: string,
      *       vendorAddresses: [
      *         {
      *           addressId: number,
@@ -858,10 +872,10 @@ export class CustomersController implements interfaces.Controller {
      * Creates a customer review.
      * @param request The request body. Format:
      * {
-     *  customerId: number;
-     *  vendorToProductId: number;
-     *  reviewText: string;
-     *  rating: number;
+     *  customerId: number,
+     *  vendorToProductId: number,
+     *  reviewText: string,
+     *  rating: number
      * }
      * @param response The response. Format:
      *  {
@@ -915,10 +929,10 @@ export class CustomersController implements interfaces.Controller {
      * @param request The request body. Format:
      * {
      *  reviewId: number,
-     *  customerId: number;
-     *  vendorToProductId: number;
-     *  reviewText: string;
-     *  rating: number;
+     *  customerId: number,
+     *  vendorToProductId: number,
+     *  reviewText: string,
+     *  rating: number
      * }
      * @param response The response. Format:
      *  {
@@ -1082,7 +1096,7 @@ export class CustomersController implements interfaces.Controller {
      *    result: [
      *            {
      *               productInformation: {
-     *                  productId: number
+     *                  productId: number,
      *                  name: string,
      *                  description: string,
      *                  unitPriceEuro: decimal,
@@ -1108,12 +1122,12 @@ export class CustomersController implements interfaces.Controller {
      *                      },
      *                     ...
      *                   ],
-     *               vendorInformation{
+     *               vendorInformation: {
      *                  vendorId: number,
      *                  name: string,
      *                  userName: string,
      *                  email: string,
-     *                  phoneNumber: string
+     *                  phoneNumber: string,
      *                  vendorAddresses: [
      *                    {
      *                      addressId: number,
@@ -1127,7 +1141,7 @@ export class CustomersController implements interfaces.Controller {
      *               }
      *            },
      *          ...
-     *   ]
+     *     ]
      *  }
      */
     @httpGet("/recommended/product/:kid")

@@ -33,6 +33,15 @@ import { ProductRecommendationService } from '../core/services/product.recommend
  * The admin controller.
  */
 export class AdminController implements interfaces.Controller {
+    /**
+     * Initializes the admin controller.
+     * @param categoriesService The categories service.
+     * @param productRecommendationService The product recommendation service.
+     * @param mssqlDatabaseService The MSSQL database service.
+     * @param mongoDBService The MongoDB service.
+     * @param adminService The admin service.
+     * @param requestBodyValidationService The request body validation service.
+     */
     constructor(
         @inject(CategoriesService.name) private categoriesService: CategoriesService,
         @inject(ProductRecommendationService.name) private productRecommendationService: ProductRecommendationService,
@@ -60,7 +69,7 @@ export class AdminController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -125,9 +134,9 @@ export class AdminController implements interfaces.Controller {
      *    courierId: number,
      *    name: string,
      *    email: string,
-     *    phoneNumber: string,
+     *    phoneNumber: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -181,7 +190,7 @@ export class AdminController implements interfaces.Controller {
 
     /**
      * Removes a courier.
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -236,7 +245,7 @@ export class AdminController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -300,6 +309,7 @@ export class AdminController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/courier/address/update/:aid")
@@ -351,7 +361,7 @@ export class AdminController implements interfaces.Controller {
      *   courierId: number,
      *   addressId: number
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -389,7 +399,7 @@ export class AdminController implements interfaces.Controller {
      *   adminId: number,
      *   name: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -430,7 +440,7 @@ export class AdminController implements interfaces.Controller {
      *   categoryId: number,
      *   name: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -470,7 +480,7 @@ export class AdminController implements interfaces.Controller {
     /**
      * Deletes a category.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -503,7 +513,7 @@ export class AdminController implements interfaces.Controller {
      *    vendorToProductId: number,
      *    purchaseProbability: float
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -550,7 +560,7 @@ export class AdminController implements interfaces.Controller {
      *    vendorToProductId: number,
      *    purchaseProbability: float
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -596,7 +606,7 @@ export class AdminController implements interfaces.Controller {
     /**
      * Deletes an existing recommendation.
      * @param request The request body. 
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
