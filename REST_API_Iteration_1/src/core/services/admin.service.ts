@@ -49,7 +49,7 @@ export class AdminService {
 
     /**
      * Creates a new courier.
-     * @param courier The courier to created.
+     * @param courier The courier to be created.
      * @returns The created courier.
      */
     public async createNewCourier(courier: Courier): Promise<Courier> {
