@@ -40,7 +40,7 @@ def create_dict(parameters, vals):
 
 
 def commit(connection, log_message=None):
-    """Commis the connection.
+    """Commits the connection.
     Args:
         connection (_type_): The connection.
         log_message (_type_, optional):
@@ -57,7 +57,7 @@ def commit(connection, log_message=None):
 def close(connection, log_message=None):
     """Closes the connection.
     Args:
-        connection (_type_): The connection
+        connection (_type_): The connection.
         log_message (_type_, optional):
         Optional log message. Defaults to None.
     """
@@ -72,7 +72,7 @@ def close(connection, log_message=None):
 def rollback(connection, log_message=None):
     """Rollbacks the connection.
     Args:
-        connection (_type_): The connection
+        connection (_type_): The connection.
         log_message (_type_, optional):
         Optional log message. Defaults to None.
     """
@@ -113,7 +113,7 @@ def convert_to_neo4j_datatype(val):
 def create_mongodb_collection(
     mongo_client: pymongo.MongoClient, db_name, collection_name
 ):
-    """_Creates a MongoDB collection
+    """Creates a MongoDB collection.
     Args:
         mongo_client (pymongo.MongoClient): Mongo client.
         db_name (str): DB name.
@@ -133,7 +133,7 @@ def create_neo4j_properties_string(properties_dict: dict):
     """Creates a properties string from properties dict.
     E.g.: {"a": 2, "b": 3} -> a: 2, b: 3
     Args:
-        properties_dict (dict): _description_
+        properties_dict (dict): The dictionary with properties.
     Returns:
         str: The Neo4j properties string.
     """
@@ -214,7 +214,7 @@ def create_relationship(
 
 def create_neo4j_m_to_n_dict(entity_attributes, entity_values, mn_information):
     """Creates a dictionary that is needed to create a relationship
-    reoresenting a m:n table (function create_relationship).
+    representing a m:n table (function create_relationship).
     Args:
         entity_attributes (list): The attribute names.
         entity_values (list): The attribute values.
@@ -312,7 +312,7 @@ def get_neo4j_driver(connection_data):
     """Gets the Neo4j driver.
     Args:
         connection_data (dict):
-        Dictionary of form {"URI: <val>, "Username": <val>, "Password": <val>}
+        Dictionary of form {"URI: <val>, "Username": <val>, "Password": <val>}.
     Returns:
         Neo4jDriver: The Neo4j driver.
     """
@@ -327,7 +327,7 @@ def get_mongodb_driver(connection_data):
     """Gets the MongoDB driver.
     Args:
         connection_data (dict):
-        Dictionary of form {"connectionString": <val>}
+        Dictionary of form {"connectionString": <val>}.
     Returns:
         MongoClient: The MongoDB driver.
     """
