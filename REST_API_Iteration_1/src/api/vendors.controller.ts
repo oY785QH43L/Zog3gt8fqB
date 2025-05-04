@@ -67,7 +67,7 @@ export class VendorsController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -128,7 +128,7 @@ export class VendorsController implements interfaces.Controller {
      *    userName: string,
      *    password: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -183,7 +183,7 @@ export class VendorsController implements interfaces.Controller {
      *    password: string,
      *    phoneNumber: string,
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -306,7 +306,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Deletes the account.
      * @param request The request body.
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -357,7 +357,7 @@ export class VendorsController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -422,6 +422,7 @@ export class VendorsController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/address/update/:aid")
@@ -470,7 +471,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Deletes an address for a vendor.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -510,7 +511,7 @@ export class VendorsController implements interfaces.Controller {
      *          country: string
      *      },
      *      ...
-     * ]
+     *    ]
      * }
      */
     @httpGet("/address/:vid")
@@ -548,7 +549,7 @@ export class VendorsController implements interfaces.Controller {
      *    ...
      *  ]
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -619,7 +620,7 @@ export class VendorsController implements interfaces.Controller {
      *   name: string,
      *   description: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string,
      *    updatedData: {
@@ -726,7 +727,7 @@ export class VendorsController implements interfaces.Controller {
     /**
      * Removes a vendor product.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -766,9 +767,9 @@ export class VendorsController implements interfaces.Controller {
      * Adds a category to the global product definition.
      * @param request The request body. Format:
      * {
-     *   vendorId: number;
-     *   vendorToProductId: number;
-     *   categoryId: number;
+     *   vendorId: number,
+     *   vendorToProductId: number,
+     *   categoryId: number
      * }
      * @param response The response body. Format:
      * {
@@ -825,9 +826,9 @@ export class VendorsController implements interfaces.Controller {
      * Removes a category from the global product definition.
      * @param request The request body. Format:
      * {
-     *   vendorId: number;
-     *   vendorToProductId: number;
-     *   categoryId: number;
+     *   vendorId: number,
+     *   vendorToProductId: number,
+     *   categoryId: number
      * }
      * @param response The response body. Format:
      * {

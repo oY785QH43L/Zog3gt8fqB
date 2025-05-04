@@ -69,7 +69,7 @@ export class CustomersController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -137,7 +137,7 @@ export class CustomersController implements interfaces.Controller {
      *    userName: string,
      *    password: string
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -193,7 +193,7 @@ export class CustomersController implements interfaces.Controller {
      *    password: string,
      *    phoneNumber: string,
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   id: number
      * }
@@ -319,7 +319,7 @@ export class CustomersController implements interfaces.Controller {
     /**
      * Deletes the customer account.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -389,7 +389,7 @@ export class CustomersController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -454,6 +454,7 @@ export class CustomersController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/address/update/:aid")
@@ -502,7 +503,7 @@ export class CustomersController implements interfaces.Controller {
     /**
      * Deletes an address for a customer.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }

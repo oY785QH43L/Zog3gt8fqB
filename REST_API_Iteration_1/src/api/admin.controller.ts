@@ -52,7 +52,7 @@ export class AdminController implements interfaces.Controller {
      *        ...
      *    ]       
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -119,7 +119,7 @@ export class AdminController implements interfaces.Controller {
      *    email: string,
      *    phoneNumber: string,
      * }
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -173,7 +173,7 @@ export class AdminController implements interfaces.Controller {
 
     /**
      * Removes the courier.
-     * @param response The response.Format:
+     * @param response The response. Format:
      * {
      *   message: string
      * }
@@ -228,7 +228,7 @@ export class AdminController implements interfaces.Controller {
      *   postalCode: string,
      *   country: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -292,6 +292,7 @@ export class AdminController implements interfaces.Controller {
      *      city: string,
      *      postalCode: string,
      *      country: string
+     *    }
      *  }
      */
     @httpPut("/courier/address/update/:aid")
@@ -336,14 +337,14 @@ export class AdminController implements interfaces.Controller {
     }
 
     /**
-     * Removes a new courier address.
+     * Removes a courier address.
      * @param request The request body. Format:
      * {
      *   adminId: number,
      *   courierId: number,
      *   addressId: number
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -381,7 +382,7 @@ export class AdminController implements interfaces.Controller {
      *   adminId: number,
      *   name: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -422,7 +423,7 @@ export class AdminController implements interfaces.Controller {
      *   categoryId: number,
      *   name: string
      * }
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
@@ -462,7 +463,7 @@ export class AdminController implements interfaces.Controller {
     /**
      * Deletes a category.
      * @param request The request body.
-     * @param response The response. Format
+     * @param response The response. Format:
      *  {
      *    message: string
      *  }
