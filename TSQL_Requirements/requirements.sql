@@ -1567,7 +1567,7 @@ END;
 
 -- K1
 /*
-	Creates a new customer using username, first name, last name, email, password phone number
+	Creates a new customer using username, first name, last name, email, password, phone number
 	and addresses.
 */
 CREATE OR ALTER PROCEDURE CreateNewCustomer

@@ -6,7 +6,7 @@ of the both iterations.
 The process of the analysis is also described in the file [performance_analysis.ipynb](./performance_analysis.ipynb)
 in detail.
 For every requirement, the average API response time was calculated by
-measuring subtracting the start of every API request from the end of the API request.
+subtracting the start of every API request from the end of the API request.
 This was done in every iteration for every requirement 30 times.
 Afterwards, the minimal and maximal value was removed from the 30 measurements
 and an average was calculated.
