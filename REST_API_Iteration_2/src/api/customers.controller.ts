@@ -647,7 +647,7 @@ export class CustomersController implements interfaces.Controller {
      *           },
      *          ...
      *       ],
-     *    vendorInformation{
+     *    vendorInformation: {
      *       vendorId: number,
      *       name: string,
      *       userName: string,
