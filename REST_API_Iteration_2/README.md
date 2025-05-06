@@ -51,7 +51,7 @@ The file *index.ts* is the main entry of the program.
 ## Prerequisites
 * Node.js (version at least v18.0.0) 
 * Running MSSQL server
-* Runnning MongoDB cluster
+* Running MongoDB cluster
 * Running Redis server
 * Running Neo4j server
 
