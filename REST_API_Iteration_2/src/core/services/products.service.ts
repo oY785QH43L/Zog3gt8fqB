@@ -289,7 +289,7 @@ export class ProductsService {
 
     /**
      * Removes the given video.
-     * @param imageId The video ID.
+     * @param videoId The video ID.
      */
     public async removeProductVideo(videoId: number): Promise<void> {
         let connection = await mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.MONGODB_DATABASE });
