@@ -117,7 +117,7 @@ export class AdminController implements interfaces.Controller {
      *    courierId: number,
      *    name: string,
      *    email: string,
-     *    phoneNumber: string,
+     *    phoneNumber: string
      * }
      * @param response The response. Format:
      * {
