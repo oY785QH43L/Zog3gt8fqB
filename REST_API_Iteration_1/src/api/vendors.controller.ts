@@ -181,7 +181,7 @@ export class VendorsController implements interfaces.Controller {
      *    name: string,
      *    email: string,
      *    password: string,
-     *    phoneNumber: string,
+     *    phoneNumber: string
      * }
      * @param response The response. Format:
      * {
