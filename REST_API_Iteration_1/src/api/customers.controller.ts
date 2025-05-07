@@ -585,7 +585,7 @@ export class CustomersController implements interfaces.Controller {
      * @param response The response body. Format:
      * {
      *    productInformation: {
-     *       productId: number
+     *       productId: number,
      *       name: string,
      *       description: string,
      *       unitPriceEuro: decimal,
